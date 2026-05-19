@@ -66,6 +66,22 @@ function RampInput({
     }
   }, [inputType, localValue, onCommit, rampNumber, value])
 
+  useEffect(() => {
+    const normalizedValue = localValue.trim().toUpperCase()
+    const normalizedCurrentValue = (value || "").trim().toUpperCase()
+
+    if (normalizedValue === normalizedCurrentValue && localValue === (value || "")) {
+      return
+    }
+
+    const debounceMs = normalizedValue ? 550 : 120
+    const timer = window.setTimeout(() => {
+      onCommit(rampNumber, normalizedValue, inputType)
+    }, debounceMs)
+
+    return () => window.clearTimeout(timer)
+  }, [inputType, localValue, onCommit, rampNumber, value])
+
   return (
     <input
       type="text"
@@ -243,10 +259,6 @@ function WarehouseLayout({
                 ))}
               </div>
             </div>
-
-            <div className="warehouse-zone-label top-left">60 → 44</div>
-            <div className="warehouse-zone-label top-right">20 → 35</div>
-            <div className="warehouse-zone-label bottom-center">43 → 36</div>
           </div>
 
           <div className="warehouse-layout-bottom" aria-label="Bottom ramps">

@@ -75,7 +75,6 @@ function WarehouseVisualizationContent() {
   const [filter, setFilter] = useState<RampFilter>("all")
   const [showUploader, setShowUploader] = useState(false)
   const [showChangeTrailer, setShowChangeTrailer] = useState(false)
-  const [isToolsPinned, setIsToolsPinned] = useState(false)
   const [changeTruck, setChangeTruck] = useState("")
   const [changeTrailer, setChangeTrailer] = useState("")
   const [changeResult, setChangeResult] = useState<string | null>(null)
@@ -463,14 +462,8 @@ function WarehouseVisualizationContent() {
 
       <Legend />
 
-      <div className={`tools-dock ${isToolsPinned ? "pinned" : ""}`}>
-        <button
-          type="button"
-          className="tools-main"
-          aria-label="Tools"
-          aria-expanded={isToolsPinned}
-          onClick={() => setIsToolsPinned((current) => !current)}
-        >
+      <div className="tools-dock">
+        <button type="button" className="tools-main" aria-label="Tools">
           Tools
         </button>
 
