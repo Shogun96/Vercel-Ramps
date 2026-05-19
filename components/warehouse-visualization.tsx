@@ -234,14 +234,32 @@ function WarehouseVisualizationContent() {
       if (!isMounted.current) return
       if (rampNumber < 20 || rampNumber > 60) return
 
-      setSelectedRamp(null)
-
       setRampStatus((previous) => {
+        const currentStatus = previous[rampNumber] || createDefaultStatus()
+        const isOccupied =
+          currentStatus.active ||
+          currentStatus.red ||
+          currentStatus.yellow ||
+          Boolean(currentStatus.truckValue?.trim()) ||
+          Boolean(currentStatus.trailerValue?.trim())
+
+        const nextRampStatus = isOccupied
+          ? createDefaultStatus()
+          : {
+              ...createDefaultStatus(),
+              active: true,
+              red: true,
+              yellow: false,
+              hasTruck: true,
+              isExiting: false,
+            }
+
         const nextStatus = {
           ...previous,
-          [rampNumber]: createDefaultStatus(),
+          [rampNumber]: nextRampStatus,
         }
 
+        setSelectedRamp(isOccupied ? null : rampNumber)
         saveRampStatus(nextStatus)
         return nextStatus
       })

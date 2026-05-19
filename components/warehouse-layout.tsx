@@ -147,8 +147,8 @@ function RampCard({
             event.stopPropagation()
             onRampClick(rampNumber)
           }}
-          aria-label={`Clear ramp ${rampNumber}`}
-          title={`Clear ramp ${rampNumber}`}
+          aria-label={`Toggle ramp ${rampNumber}`}
+          title={`Toggle ramp ${rampNumber}`}
         >
           {rampNumber}
         </button>
