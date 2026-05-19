@@ -27,7 +27,7 @@ const defaultContextValue: SupabaseSyncContextType = {
   syncLookupData: async () => {},
   syncRampStatus: async () => {},
   isSupabaseAvailable: false,
-  isInitializing: true,
+  isInitializing: false,
   connectionStatus: "connecting",
 }
 
@@ -36,7 +36,7 @@ const SupabaseSyncContext = createContext<SupabaseSyncContextType>(defaultContex
 export function SupabaseSyncProvider({ children }: { children: React.ReactNode }) {
   const isInitialized = useRef(false)
   const connectionRetries = useRef<number>(0)
-  const maxConnectionRetries = 3
+  const maxConnectionRetries = 1
   const channelsRef = useRef<{
     lookupChannel: ReturnType<typeof supabase.channel> | null
   }>({
@@ -48,7 +48,7 @@ export function SupabaseSyncProvider({ children }: { children: React.ReactNode }
   const [syncError, setSyncError] = useState<string | null>(null)
   const [lastSynced, setLastSynced] = useState<Date | null>(null)
   const [isSupabaseAvailable, setIsSupabaseAvailable] = useState<boolean>(false)
-  const [isInitializing, setIsInitializing] = useState<boolean>(true)
+  const [isInitializing, setIsInitializing] = useState<boolean>(false)
   const [connectionStatus, setConnectionStatus] = useState<"connected" | "disconnected" | "connecting">("connecting")
 
   const supabaseConfigured = hasSupabaseCredentials && supabase !== null
@@ -79,7 +79,7 @@ export function SupabaseSyncProvider({ children }: { children: React.ReactNode }
 
         // Use a simple query with timeout
         const timeoutPromise = new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error("Connection timeout")), 8000),
+          setTimeout(() => reject(new Error("Connection timeout")), 1800),
         )
 
         const queryPromise = supabase.from("lookup_data").select("count", { count: "exact", head: true })
@@ -96,7 +96,7 @@ export function SupabaseSyncProvider({ children }: { children: React.ReactNode }
         console.error(`Connection test failed (attempt ${retryAttempt + 1}):`, error?.message || error)
 
         if (retryAttempt < maxConnectionRetries) {
-          const delay = (retryAttempt + 1) * 2000
+          const delay = 500
           console.log(`Retrying in ${delay}ms...`)
           await new Promise((resolve) => setTimeout(resolve, delay))
           return testSupabaseConnection(retryAttempt + 1)
@@ -161,6 +161,8 @@ export function SupabaseSyncProvider({ children }: { children: React.ReactNode }
         localStorage.setItem("warehouseSyncId", newSyncId)
         setSyncId(newSyncId)
       }
+
+      setIsInitializing(false)
 
       if (!supabaseConfigured) {
         console.log("Supabase credentials not found, running in local-only mode")

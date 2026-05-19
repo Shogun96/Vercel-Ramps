@@ -536,16 +536,6 @@ function WarehouseVisualizationContent() {
     )
   }
 
-  if (isInitializing) {
-    return (
-      <div className="warehouse-loading">
-        <div className="warehouse-spinner" />
-        <h2>Initializing data connection</h2>
-        <p>Preparing the warehouse ramp board...</p>
-      </div>
-    )
-  }
-
   return (
     <div id="app" className={`warehouse-app ${orientation}`}>
       <header className="warehouse-topbar">
@@ -558,9 +548,21 @@ function WarehouseVisualizationContent() {
         </div>
 
         <div className="warehouse-topbar-actions">
-          <div className={`sync-pill ${isSupabaseAvailable && connectionStatus === "connected" ? "online" : "offline"}`}>
+          <div
+            className={`sync-pill ${
+              isSupabaseAvailable && connectionStatus === "connected"
+                ? "online"
+                : connectionStatus === "connecting"
+                  ? "connecting"
+                  : "offline"
+            }`}
+          >
             <span />
-            {isSupabaseAvailable && connectionStatus === "connected" ? "Lookup DB online" : "Local mode"}
+            {isSupabaseAvailable && connectionStatus === "connected"
+              ? "Lookup DB online"
+              : connectionStatus === "connecting"
+                ? "Starting fast..."
+                : "Local mode"}
           </div>
           <button className="control-button ghost" onClick={toggleUploader}>
             {showUploader ? "Hide tools" : "Database tools"}
