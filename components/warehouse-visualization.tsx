@@ -233,31 +233,12 @@ function WarehouseVisualizationContent() {
       if (!isMounted.current) return
       if (rampNumber < 20 || rampNumber > 60) return
 
-      setSelectedRamp(rampNumber)
+      setSelectedRamp(null)
 
       setRampStatus((previous) => {
-        const currentStatus = previous[rampNumber] || createDefaultStatus()
-        const hasData =
-          Boolean(currentStatus.truckValue?.trim()) ||
-          Boolean(currentStatus.trailerValue?.trim()) ||
-          currentStatus.yellow
-
         const nextStatus = {
           ...previous,
-          [rampNumber]: hasData
-            ? {
-                ...currentStatus,
-                active: !currentStatus.active,
-                red: !currentStatus.yellow ? !currentStatus.active : false,
-                hasTruck: !currentStatus.yellow ? !currentStatus.active : false,
-              }
-            : {
-                ...currentStatus,
-                active: !currentStatus.active,
-                red: !currentStatus.active,
-                yellow: false,
-                hasTruck: !currentStatus.active,
-              },
+          [rampNumber]: createDefaultStatus(),
         }
 
         saveRampStatus(nextStatus)
@@ -271,24 +252,33 @@ function WarehouseVisualizationContent() {
     (rampNumber: number, value: string, inputType: "truck" | "trailer") => {
       if (!isMounted.current) return
 
-      const cleanValue = value.trim()
-      setSelectedRamp(rampNumber)
+      const cleanValue = normalizeValue(value)
+      setSelectedRamp(cleanValue ? rampNumber : null)
 
       setRampStatus((previous) => {
         const currentStatus = previous[rampNumber] || createDefaultStatus()
+
+        if (!cleanValue) {
+          const nextStatus = {
+            ...previous,
+            [rampNumber]: createDefaultStatus(),
+          }
+
+          saveRampStatus(nextStatus)
+          return nextStatus
+        }
+
         const updatedStatus = {
           ...currentStatus,
-          [inputType === "truck" ? "truckValue" : "trailerValue"]: value,
+          [inputType === "truck" ? "truckValue" : "trailerValue"]: cleanValue,
         }
 
-        if (inputType === "truck" && cleanValue && cleanValue.toLowerCase() !== "defect") {
+        if (inputType === "truck" && cleanValue.toLowerCase() !== "defect") {
           const matchingTrailer = findTrailerForTruck(cleanValue)
-          if (matchingTrailer) {
-            updatedStatus.trailerValue = matchingTrailer
-          }
+          updatedStatus.trailerValue = matchingTrailer || ""
         }
 
-        if (inputType === "trailer" && cleanValue && cleanValue.toLowerCase() !== "defect") {
+        if (inputType === "trailer" && cleanValue.toLowerCase() !== "defect") {
           const matchingTruck = findTruckForTrailer(cleanValue)
           if (matchingTruck) {
             updatedStatus.truckValue = matchingTruck
@@ -308,23 +298,12 @@ function WarehouseVisualizationContent() {
           ...previous,
           [rampNumber]: {
             ...updatedStatus,
-            active: hasAnyInput || isYellow || currentStatus.active,
+            active: hasAnyInput || isYellow,
             red: hasAnyInput && !isYellow,
             yellow: isYellow,
             hasTruck: hasAnyInput && !isYellow,
             isExiting: false,
           },
-        }
-
-        if (!hasAnyInput && !isYellow && !currentStatus.active) {
-          nextStatus[rampNumber] = {
-            ...updatedStatus,
-            active: false,
-            red: false,
-            yellow: false,
-            hasTruck: false,
-            isExiting: false,
-          }
         }
 
         saveRampStatus(nextStatus)

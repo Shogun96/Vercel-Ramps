@@ -1,6 +1,6 @@
 "use client"
 
-import { memo } from "react"
+import { memo, useCallback, useEffect, useState } from "react"
 import type { RampStatus, RampState } from "./warehouse-visualization"
 
 type RampFilter = "all" | RampState
@@ -36,6 +36,60 @@ const getRampTone = (status?: RampStatus) => {
   if (status.yellow) return "defect"
   if (status.active || status.red || status.truckValue || status.trailerValue) return "occupied"
   return "free"
+}
+
+function RampInput({
+  rampNumber,
+  inputType,
+  value,
+  placeholder,
+  onCommit,
+}: {
+  rampNumber: number
+  inputType: "truck" | "trailer"
+  value: string
+  placeholder: string
+  onCommit: (rampNumber: number, value: string, inputType: "truck" | "trailer") => void
+}) {
+  const [localValue, setLocalValue] = useState(value || "")
+
+  useEffect(() => {
+    setLocalValue(value || "")
+  }, [value])
+
+  const commitValue = useCallback(() => {
+    const normalizedValue = localValue.trim().toUpperCase()
+    const normalizedCurrentValue = (value || "").trim().toUpperCase()
+
+    if (normalizedValue !== normalizedCurrentValue || localValue !== value) {
+      onCommit(rampNumber, normalizedValue, inputType)
+    }
+  }, [inputType, localValue, onCommit, rampNumber, value])
+
+  return (
+    <input
+      type="text"
+      className="warehouse-ramp-input"
+      placeholder={placeholder}
+      value={localValue}
+      onChange={(event) => setLocalValue(event.target.value.toUpperCase())}
+      onBlur={commitValue}
+      onKeyDown={(event) => {
+        if (event.key === "Enter") {
+          event.preventDefault()
+          event.currentTarget.blur()
+        }
+
+        if (event.key === "Escape") {
+          setLocalValue(value || "")
+          event.currentTarget.blur()
+        }
+      }}
+      autoComplete="off"
+      autoCorrect="off"
+      spellCheck={false}
+    />
+  )
 }
 
 function RampCard({
@@ -74,33 +128,27 @@ function RampCard({
             event.stopPropagation()
             onRampClick(rampNumber)
           }}
-          aria-label={`Toggle ramp ${rampNumber}`}
-          title={`Toggle ramp ${rampNumber}`}
+          aria-label={`Clear ramp ${rampNumber}`}
+          title={`Clear ramp ${rampNumber}`}
         >
           {rampNumber}
         </button>
 
         <div className="warehouse-ramp-inputs" onClick={(event) => event.stopPropagation()}>
-          <input
-            type="text"
-            className="warehouse-ramp-input"
+          <RampInput
+            rampNumber={rampNumber}
+            inputType="truck"
+            value={status.truckValue || ""}
             placeholder="Truck"
-            value={status.truckValue}
-            onChange={(event) => onInputChange(rampNumber, event.target.value.toUpperCase(), "truck")}
-            autoComplete="off"
-            autoCorrect="off"
-            spellCheck={false}
+            onCommit={onInputChange}
           />
 
-          <input
-            type="text"
-            className="warehouse-ramp-input"
+          <RampInput
+            rampNumber={rampNumber}
+            inputType="trailer"
+            value={status.trailerValue || ""}
             placeholder="Trailer"
-            value={status.trailerValue}
-            onChange={(event) => onInputChange(rampNumber, event.target.value.toUpperCase(), "trailer")}
-            autoComplete="off"
-            autoCorrect="off"
-            spellCheck={false}
+            onCommit={onInputChange}
           />
         </div>
       </div>
@@ -213,7 +261,7 @@ function WarehouseLayout({
                 onRampClick={onRampClick}
                 onSelectRamp={onSelectRamp}
                 onInputChange={onInputChange}
-                  />
+              />
             ))}
           </div>
         </div>
