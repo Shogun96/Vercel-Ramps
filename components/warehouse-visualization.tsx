@@ -67,6 +67,27 @@ const initializeRampStatus = () => {
   return status
 }
 
+const normalizeRemoteStatus = (remoteStatus: Record<number, Partial<RampStatus>>) => {
+  const normalized: Record<number, RampStatus> = {}
+
+  Object.entries(remoteStatus || {}).forEach(([rampNumber, status]) => {
+    normalized[Number(rampNumber)] = {
+      ...createDefaultStatus(),
+      ...(status || {}),
+      active: Boolean(status?.active),
+      red: Boolean(status?.red),
+      yellow: Boolean(status?.yellow),
+      hasTruck: Boolean(status?.hasTruck),
+      isExiting: Boolean(status?.isExiting),
+      inputValue: status?.inputValue || "",
+      truckValue: status?.truckValue || "",
+      trailerValue: status?.trailerValue || "",
+    }
+  })
+
+  return normalized
+}
+
 const getRampState = (status?: RampStatus): RampState => {
   if (!status) return "free"
   if (status.yellow) return "defect"
@@ -208,6 +229,42 @@ function WarehouseVisualizationContent() {
       console.error("Failed to load ramp status from localStorage", error)
       setRampStatus(initializeRampStatus())
     }
+  }, [])
+
+  useEffect(() => {
+    const handleRemoteStatusUpdate = (event: Event) => {
+      const customEvent = event as CustomEvent<{
+        status?: Record<number, Partial<RampStatus>>
+        timestamp?: Date
+        source?: string
+      }>
+
+      const remoteStatus = customEvent.detail?.status
+      if (!remoteStatus) return
+
+      const normalizedRemoteStatus = normalizeRemoteStatus(remoteStatus)
+
+      setRampStatus((previous) => {
+        const nextStatus = {
+          ...previous,
+          ...normalizedRemoteStatus,
+        }
+
+        try {
+          localStorage.setItem("warehouseRampStatus_localOnly", JSON.stringify(nextStatus))
+          localStorage.setItem("rampStatusLastUpdated_localOnly", new Date().toISOString())
+        } catch (error) {
+          console.error("Failed to cache remote ramp status:", error)
+        }
+
+        return nextStatus
+      })
+
+      setLastLocalSave(new Date())
+    }
+
+    window.addEventListener("rampStatusRemoteUpdated", handleRemoteStatusUpdate)
+    return () => window.removeEventListener("rampStatusRemoteUpdated", handleRemoteStatusUpdate)
   }, [])
 
   useEffect(() => {
@@ -607,33 +664,51 @@ function WarehouseVisualizationContent() {
     try {
       const movements = await fetchRampMovements(fromDate.toISOString(), toDate.toISOString())
 
-      if (movements.length === 0) {
-        setMovementExportResult("No movements found in this interval.")
-        return
-      }
-
-      const excelRows = movements.map((movement) => {
-        const date = new Date(movement.created_at)
-        return {
-          Date: date.toLocaleDateString(),
-          Time: date.toLocaleTimeString(),
-          "Created at": date.toLocaleString(),
-          Event: movement.event_type,
-          Ramp: movement.ramp_number ?? "",
-          "Previous status": movement.previous_status ?? "",
-          "New status": movement.new_status ?? "",
-          "Previous truck": movement.previous_truck ?? "",
-          "New truck": movement.new_truck ?? "",
-          "Previous trailer": movement.previous_trailer ?? "",
-          "New trailer": movement.new_trailer ?? "",
-          Truck: movement.truck ?? "",
-          Trailer: movement.trailer ?? "",
-          "Changed field": movement.changed_field ?? "",
-          Source: movement.source ?? "",
-          Device: movement.device_id ?? "",
-          Notes: movement.notes ?? "",
-        }
-      })
+      const excelRows =
+        movements.length > 0
+          ? movements.map((movement) => {
+              const date = new Date(movement.created_at)
+              return {
+                Date: date.toLocaleDateString(),
+                Time: date.toLocaleTimeString(),
+                "Created at": date.toLocaleString(),
+                Event: movement.event_type,
+                Ramp: movement.ramp_number ?? "",
+                "Previous status": movement.previous_status ?? "",
+                "New status": movement.new_status ?? "",
+                "Previous truck": movement.previous_truck ?? "",
+                "New truck": movement.new_truck ?? "",
+                "Previous trailer": movement.previous_trailer ?? "",
+                "New trailer": movement.new_trailer ?? "",
+                Truck: movement.truck ?? "",
+                Trailer: movement.trailer ?? "",
+                "Changed field": movement.changed_field ?? "",
+                Source: movement.source ?? "",
+                Device: movement.device_id ?? "",
+                Notes: movement.notes ?? "",
+              }
+            })
+          : [
+              {
+                Date: "",
+                Time: "",
+                "Created at": "",
+                Event: "No movements found in this interval",
+                Ramp: "",
+                "Previous status": "",
+                "New status": "",
+                "Previous truck": "",
+                "New truck": "",
+                "Previous trailer": "",
+                "New trailer": "",
+                Truck: "",
+                Trailer: "",
+                "Changed field": "",
+                Source: "",
+                Device: "",
+                Notes: `Selected interval: ${fromDate.toLocaleString()} - ${toDate.toLocaleString()}`,
+              },
+            ]
 
       const workbook = XLSX.utils.book_new()
       const worksheet = XLSX.utils.json_to_sheet(excelRows)
@@ -642,7 +717,7 @@ function WarehouseVisualizationContent() {
         { wch: 14 },
         { wch: 12 },
         { wch: 22 },
-        { wch: 24 },
+        { wch: 28 },
         { wch: 8 },
         { wch: 16 },
         { wch: 16 },
@@ -655,17 +730,34 @@ function WarehouseVisualizationContent() {
         { wch: 16 },
         { wch: 20 },
         { wch: 20 },
-        { wch: 34 },
+        { wch: 42 },
       ]
 
       XLSX.utils.book_append_sheet(workbook, worksheet, "Ramp movements")
-      XLSX.writeFile(
-        workbook,
-        `ramp-movements-${movementFrom.replace(/[:T]/g, "-")}_to_${movementTo.replace(/[:T]/g, "-")}.xlsx`,
-      )
 
-      setMovementExportResult(`Exported ${movements.length} movement${movements.length === 1 ? "" : "s"}.`)
+      const fileName = `ramp-movements-${movementFrom.replace(/[:T]/g, "-")}_to_${movementTo.replace(/[:T]/g, "-")}.xlsx`
+      const workbookArray = XLSX.write(workbook, { bookType: "xlsx", type: "array" })
+      const blob = new Blob([workbookArray], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement("a")
+
+      link.href = url
+      link.download = fileName
+      link.rel = "noopener"
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.setTimeout(() => URL.revokeObjectURL(url), 500)
+
+      setMovementExportResult(
+        movements.length > 0
+          ? `Downloaded ${movements.length} movement${movements.length === 1 ? "" : "s"}.`
+          : "No movements found, but an Excel file with the selected interval was downloaded.",
+      )
     } catch (error: any) {
+      console.error("Movement export failed:", error)
       setMovementExportResult(error?.message || "Could not export movements.")
     } finally {
       setIsExportingMovements(false)

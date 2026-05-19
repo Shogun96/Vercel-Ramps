@@ -49,3 +49,82 @@ create policy "Allow insert ramp movements"
   on public.ramp_movements
   for insert
   with check (true);
+
+
+-- Real-time ramp status table.
+-- Required for online sync across all devices.
+create table if not exists public.warehouse_status (
+  ramp_number integer primary key,
+  active boolean not null default false,
+  red boolean not null default false,
+  yellow boolean not null default false,
+  input_value text not null default '',
+  truck_value text not null default '',
+  trailer_value text not null default '',
+  has_truck boolean not null default false,
+  is_exiting boolean not null default false,
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists warehouse_status_updated_at_idx
+  on public.warehouse_status (updated_at desc);
+
+alter table public.warehouse_status enable row level security;
+
+drop policy if exists "Allow read warehouse status" on public.warehouse_status;
+create policy "Allow read warehouse status"
+  on public.warehouse_status
+  for select
+  using (true);
+
+drop policy if exists "Allow insert warehouse status" on public.warehouse_status;
+create policy "Allow insert warehouse status"
+  on public.warehouse_status
+  for insert
+  with check (true);
+
+drop policy if exists "Allow update warehouse status" on public.warehouse_status;
+create policy "Allow update warehouse status"
+  on public.warehouse_status
+  for update
+  using (true)
+  with check (true);
+
+-- Optional seed rows for all ramps used by the app.
+insert into public.warehouse_status (ramp_number)
+select generate_series(20, 60)
+on conflict (ramp_number) do nothing;
+
+-- Make sure Realtime can publish changes from these tables.
+-- These DO blocks are safe to run more than once.
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_publication_rel pr
+    join pg_class c on c.oid = pr.prrelid
+    join pg_namespace n on n.oid = c.relnamespace
+    join pg_publication p on p.oid = pr.prpubid
+    where p.pubname = 'supabase_realtime'
+      and n.nspname = 'public'
+      and c.relname = 'warehouse_status'
+  ) then
+    alter publication supabase_realtime add table public.warehouse_status;
+  end if;
+end $$;
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_publication_rel pr
+    join pg_class c on c.oid = pr.prrelid
+    join pg_namespace n on n.oid = c.relnamespace
+    join pg_publication p on p.oid = pr.prpubid
+    where p.pubname = 'supabase_realtime'
+      and n.nspname = 'public'
+      and c.relname = 'ramp_movements'
+  ) then
+    alter publication supabase_realtime add table public.ramp_movements;
+  end if;
+end $$;

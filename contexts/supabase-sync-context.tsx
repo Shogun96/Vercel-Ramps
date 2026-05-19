@@ -39,8 +39,10 @@ export function SupabaseSyncProvider({ children }: { children: React.ReactNode }
   const maxConnectionRetries = 1
   const channelsRef = useRef<{
     lookupChannel: ReturnType<typeof supabase.channel> | null
+    rampStatusChannel: ReturnType<typeof supabase.channel> | null
   }>({
     lookupChannel: null,
+    rampStatusChannel: null,
   })
 
   const [syncId, setSyncId] = useState<string>("")
@@ -60,6 +62,11 @@ export function SupabaseSyncProvider({ children }: { children: React.ReactNode }
       if (channelsRef.current.lookupChannel) {
         supabase.removeChannel(channelsRef.current.lookupChannel)
         channelsRef.current.lookupChannel = null
+      }
+
+      if (channelsRef.current.rampStatusChannel) {
+        supabase.removeChannel(channelsRef.current.rampStatusChannel)
+        channelsRef.current.rampStatusChannel = null
       }
     } catch (error) {
       console.error("Error cleaning up channels:", error)
@@ -108,7 +115,50 @@ export function SupabaseSyncProvider({ children }: { children: React.ReactNode }
     [supabaseConfigured],
   )
 
-  // Set up real-time subscriptions ONLY for lookup data
+  const mapStatusRowToRampStatus = useCallback((row: any): RampStatus => {
+    return {
+      active: Boolean(row.active),
+      red: Boolean(row.red),
+      yellow: Boolean(row.yellow),
+      inputValue: row.input_value || "",
+      truckValue: row.truck_value || "",
+      trailerValue: row.trailer_value || "",
+      hasTruck: Boolean(row.has_truck),
+      isExiting: Boolean(row.is_exiting),
+    }
+  }, [])
+
+  const fetchRampStatusFromSupabase = useCallback(async () => {
+    if (!supabase) return
+
+    try {
+      const { data, error } = await supabase.from("warehouse_status").select("*")
+
+      if (error) {
+        console.warn("Could not load warehouse_status from Supabase:", error.message)
+        return
+      }
+
+      const status: Record<number, RampStatus> = {}
+
+      ;(data || []).forEach((row: any) => {
+        const rampNumber = Number(row.ramp_number)
+        if (Number.isFinite(rampNumber)) {
+          status[rampNumber] = mapStatusRowToRampStatus(row)
+        }
+      })
+
+      window.dispatchEvent(
+        new CustomEvent("rampStatusRemoteUpdated", {
+          detail: { status, timestamp: new Date(), source: "supabase_initial_load" },
+        }),
+      )
+    } catch (error) {
+      console.warn("Could not load warehouse_status from Supabase:", error)
+    }
+  }, [mapStatusRowToRampStatus])
+
+  // Set up real-time subscriptions for lookup data and warehouse status
   const setupRealtimeSubscriptions = useCallback(() => {
     if (!supabase) return
 
@@ -139,12 +189,53 @@ export function SupabaseSyncProvider({ children }: { children: React.ReactNode }
             setConnectionStatus("disconnected")
           }
         })
+
+      const rampStatusChannelName = `warehouse_status_${Date.now()}`
+
+      channelsRef.current.rampStatusChannel = supabase
+        .channel(rampStatusChannelName)
+        .on("postgres_changes", { event: "*", schema: "public", table: "warehouse_status" }, (payload) => {
+          const row: any = payload.new || payload.old
+          const rampNumber = Number(row?.ramp_number)
+
+          if (Number.isFinite(rampNumber) && payload.eventType !== "DELETE") {
+            window.dispatchEvent(
+              new CustomEvent("rampStatusRemoteUpdated", {
+                detail: {
+                  status: {
+                    [rampNumber]: mapStatusRowToRampStatus(row),
+                  },
+                  payload,
+                  timestamp: new Date(),
+                  source: "supabase_realtime",
+                },
+              }),
+            )
+          } else {
+            fetchRampStatusFromSupabase()
+          }
+        })
+        .subscribe((status, err) => {
+          if (err) {
+            console.error("Warehouse status channel error:", err)
+            setConnectionStatus("disconnected")
+            setSyncError(`Warehouse status channel error: ${err.message}`)
+            return
+          }
+
+          if (status === "SUBSCRIBED") {
+            setConnectionStatus("connected")
+            fetchRampStatusFromSupabase()
+          } else if (status === "CLOSED" || status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+            setConnectionStatus("disconnected")
+          }
+        })
     } catch (error: any) {
       console.error("Error setting up subscriptions:", error)
       setSyncError(`Failed to set up real-time subscriptions: ${error?.message}`)
       setConnectionStatus("disconnected")
     }
-  }, [cleanupChannels])
+  }, [cleanupChannels, fetchRampStatusFromSupabase, mapStatusRowToRampStatus])
 
   // Initialize Supabase connection
   useEffect(() => {
@@ -264,15 +355,49 @@ export function SupabaseSyncProvider({ children }: { children: React.ReactNode }
     [isSupabaseAvailable, connectionStatus],
   )
 
-  // Sync ramp status - LOCAL STORAGE ONLY (no Supabase)
-  const syncRampStatus = useCallback(async (status: Record<number, RampStatus>) => {
-    try {
-      localStorage.setItem("warehouseRampStatus_localOnly", JSON.stringify(status))
-      localStorage.setItem("rampStatusLastUpdated_localOnly", new Date().toISOString())
-    } catch (error) {
-      console.error("Error saving ramp status:", error)
-    }
-  }, [])
+  // Sync ramp status locally and to Supabase for real-time multi-device updates
+  const syncRampStatus = useCallback(
+    async (status: Record<number, RampStatus>) => {
+      try {
+        localStorage.setItem("warehouseRampStatus_localOnly", JSON.stringify(status))
+        localStorage.setItem("rampStatusLastUpdated_localOnly", new Date().toISOString())
+      } catch (error) {
+        console.error("Error saving ramp status locally:", error)
+      }
+
+      if (!isSupabaseAvailable || connectionStatus !== "connected" || !supabase) {
+        return
+      }
+
+      try {
+        const rows = Object.entries(status).map(([rampNumber, rampStatus]) => ({
+          ramp_number: Number(rampNumber),
+          active: Boolean(rampStatus.active),
+          red: Boolean(rampStatus.red),
+          yellow: Boolean(rampStatus.yellow),
+          input_value: rampStatus.inputValue || "",
+          truck_value: rampStatus.truckValue || "",
+          trailer_value: rampStatus.trailerValue || "",
+          has_truck: Boolean(rampStatus.hasTruck),
+          is_exiting: Boolean(rampStatus.isExiting),
+          updated_at: new Date().toISOString(),
+        }))
+
+        if (rows.length > 0) {
+          const { error } = await supabase.from("warehouse_status").upsert(rows, {
+            onConflict: "ramp_number",
+          })
+
+          if (error) {
+            console.warn("Ramp status was saved locally, but Supabase sync failed:", error.message)
+          }
+        }
+      } catch (error) {
+        console.warn("Ramp status was saved locally, but Supabase sync failed:", error)
+      }
+    },
+    [connectionStatus, isSupabaseAvailable],
+  )
 
   return (
     <SupabaseSyncContext.Provider
