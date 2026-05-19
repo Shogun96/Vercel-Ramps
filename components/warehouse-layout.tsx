@@ -67,54 +67,52 @@ function RampCard({
   const tone = getRampTone(status)
 
   return (
-    <div
+    <article
       className={`warehouse-ramp-card ${tone} ${selected ? "selected" : ""} ${dimmed ? "dimmed" : ""} ${
         compact ? "compact" : ""
       }`}
       onClick={() => onSelectRamp(rampNumber)}
     >
-      <div className="warehouse-ramp-main">
-        <button
-          type="button"
-          className="warehouse-ramp-number"
-          onClick={(event) => {
-            event.stopPropagation()
-            onRampClick(rampNumber)
-          }}
-          aria-label={`Toggle ramp ${rampNumber}`}
-        >
-          {rampNumber}
-        </button>
+      <div className="warehouse-ramp-content">
+        <div className="warehouse-ramp-left">
+          <span className="warehouse-ramp-status">{getRampLabel(status)}</span>
 
-        <div className="warehouse-ramp-fields">
-          <div className="warehouse-ramp-topline">
-            <strong>{getRampLabel(status)}</strong>
-          </div>
+          <button
+            type="button"
+            className="warehouse-ramp-number"
+            onClick={(event) => {
+              event.stopPropagation()
+              onRampClick(rampNumber)
+            }}
+            aria-label={`Toggle ramp ${rampNumber}`}
+            title={`Toggle ramp ${rampNumber}`}
+          >
+            {rampNumber}
+          </button>
+        </div>
 
-          <div className="warehouse-ramp-input-grid">
-            <input
-              type="text"
-              className="warehouse-ramp-input"
-              placeholder="Truck"
-              value={status.truckValue}
-              onClick={(event) => event.stopPropagation()}
-              onChange={(event) => onInputChange(rampNumber, event.target.value.toUpperCase(), "truck")}
-              autoComplete="off"
-              autoCorrect="off"
-              spellCheck={false}
-            />
-            <input
-              type="text"
-              className="warehouse-ramp-input"
-              placeholder="Trailer"
-              value={status.trailerValue}
-              onClick={(event) => event.stopPropagation()}
-              onChange={(event) => onInputChange(rampNumber, event.target.value.toUpperCase(), "trailer")}
-              autoComplete="off"
-              autoCorrect="off"
-              spellCheck={false}
-            />
-          </div>
+        <div className="warehouse-ramp-inputs" onClick={(event) => event.stopPropagation()}>
+          <input
+            type="text"
+            className="warehouse-ramp-input"
+            placeholder="Truck"
+            value={status.truckValue}
+            onChange={(event) => onInputChange(rampNumber, event.target.value.toUpperCase(), "truck")}
+            autoComplete="off"
+            autoCorrect="off"
+            spellCheck={false}
+          />
+
+          <input
+            type="text"
+            className="warehouse-ramp-input"
+            placeholder="Trailer"
+            value={status.trailerValue}
+            onChange={(event) => onInputChange(rampNumber, event.target.value.toUpperCase(), "trailer")}
+            autoComplete="off"
+            autoCorrect="off"
+            spellCheck={false}
+          />
         </div>
       </div>
 
@@ -138,7 +136,7 @@ function RampCard({
           Clear
         </button>
       </div>
-    </div>
+    </article>
   )
 }
 
@@ -158,7 +156,7 @@ function WarehouseLayout({
   return (
     <section className="warehouse-layout-shell">
       <div className="warehouse-layout-board">
-        <div className="warehouse-layout-left">
+        <div className="warehouse-layout-left" aria-label="Left ramps">
           {leftRamps.map((rampNumber) => (
             <RampCard
               key={rampNumber}
@@ -183,7 +181,7 @@ function WarehouseLayout({
             <div className="warehouse-layout-zone-label bottom-center">Bottom docks 43 → 36</div>
           </div>
 
-          <div className="warehouse-layout-bottom">
+          <div className="warehouse-layout-bottom" aria-label="Bottom ramps">
             {bottomRamps.map((rampNumber) => (
               <RampCard
                 key={rampNumber}
@@ -202,7 +200,7 @@ function WarehouseLayout({
           </div>
         </div>
 
-        <div className="warehouse-layout-right">
+        <div className="warehouse-layout-right" aria-label="Right ramps">
           {rightRamps.map((rampNumber) => (
             <RampCard
               key={rampNumber}
