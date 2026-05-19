@@ -812,3 +812,9 @@ button {
     width: min(100%, 7rem) !important;
   }
 }
+
+
+/* Ramp card action buttons removed: boxes are now cleaner and less crowded. */
+.warehouse-ramp-actions {
+  display: none !important;
+}

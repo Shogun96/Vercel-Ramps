@@ -265,44 +265,6 @@ function WarehouseVisualizationContent() {
     [saveRampStatus],
   )
 
-  const handleClearRamp = useCallback(
-    (rampNumber: number) => {
-      setRampStatus((previous) => {
-        const nextStatus = {
-          ...previous,
-          [rampNumber]: createDefaultStatus(),
-        }
-        saveRampStatus(nextStatus)
-        return nextStatus
-      })
-      if (selectedRamp === rampNumber) setSelectedRamp(null)
-    },
-    [saveRampStatus, selectedRamp],
-  )
-
-  const handleMarkDefect = useCallback(
-    (rampNumber: number) => {
-      setSelectedRamp(rampNumber)
-      setRampStatus((previous) => {
-        const nextStatus = {
-          ...previous,
-          [rampNumber]: {
-            ...createDefaultStatus(),
-            active: true,
-            yellow: true,
-            red: false,
-            hasTruck: false,
-            inputValue: "defect",
-            truckValue: "defect",
-          },
-        }
-        saveRampStatus(nextStatus)
-        return nextStatus
-      })
-    },
-    [saveRampStatus],
-  )
-
   const handleClearAll = useCallback(() => {
     const confirmed = window.confirm("Clear all ramp statuses and local truck/trailer values?")
     if (!confirmed) return
@@ -386,8 +348,6 @@ function WarehouseVisualizationContent() {
         onRampClick={handleRampClick}
         onSelectRamp={handleSelectRamp}
         onInputChange={handleInputChange}
-        onMarkDefect={handleMarkDefect}
-        onClearRamp={handleClearRamp}
         isRampMatchingFocus={isRampMatchingFocus}
       />
 

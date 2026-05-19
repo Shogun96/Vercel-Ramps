@@ -28,8 +28,6 @@ interface WarehouseLayoutProps {
   onRampClick: (rampNumber: number) => void
   onSelectRamp: (rampNumber: number) => void
   onInputChange: (rampNumber: number, value: string, inputType: "truck" | "trailer") => void
-  onMarkDefect: (rampNumber: number) => void
-  onClearRamp: (rampNumber: number) => void
   isRampMatchingFocus: (rampNumber: number) => boolean
 }
 
@@ -49,8 +47,6 @@ function RampCard({
   onRampClick,
   onSelectRamp,
   onInputChange,
-  onMarkDefect,
-  onClearRamp,
 }: {
   rampNumber: number
   status: RampStatus
@@ -60,8 +56,6 @@ function RampCard({
   onRampClick: (rampNumber: number) => void
   onSelectRamp: (rampNumber: number) => void
   onInputChange: (rampNumber: number, value: string, inputType: "truck" | "trailer") => void
-  onMarkDefect: (rampNumber: number) => void
-  onClearRamp: (rampNumber: number) => void
 }) {
   const tone = getRampTone(status)
 
@@ -110,27 +104,6 @@ function RampCard({
           />
         </div>
       </div>
-
-      <div className="warehouse-ramp-actions">
-        <button
-          type="button"
-          onClick={(event) => {
-            event.stopPropagation()
-            onMarkDefect(rampNumber)
-          }}
-        >
-          Defect
-        </button>
-        <button
-          type="button"
-          onClick={(event) => {
-            event.stopPropagation()
-            onClearRamp(rampNumber)
-          }}
-        >
-          Clear
-        </button>
-      </div>
     </article>
   )
 }
@@ -150,8 +123,6 @@ function WarehouseLayout({
   onRampClick,
   onSelectRamp,
   onInputChange,
-  onMarkDefect,
-  onClearRamp,
   isRampMatchingFocus,
 }: WarehouseLayoutProps) {
   const filters: RampFilter[] = ["all", "occupied", "free", "defect"]
@@ -170,8 +141,6 @@ function WarehouseLayout({
               onRampClick={onRampClick}
               onSelectRamp={onSelectRamp}
               onInputChange={onInputChange}
-              onMarkDefect={onMarkDefect}
-              onClearRamp={onClearRamp}
             />
           ))}
         </div>
@@ -244,9 +213,7 @@ function WarehouseLayout({
                 onRampClick={onRampClick}
                 onSelectRamp={onSelectRamp}
                 onInputChange={onInputChange}
-                onMarkDefect={onMarkDefect}
-                onClearRamp={onClearRamp}
-              />
+                  />
             ))}
           </div>
         </div>
@@ -262,8 +229,6 @@ function WarehouseLayout({
               onRampClick={onRampClick}
               onSelectRamp={onSelectRamp}
               onInputChange={onInputChange}
-              onMarkDefect={onMarkDefect}
-              onClearRamp={onClearRamp}
             />
           ))}
         </div>
