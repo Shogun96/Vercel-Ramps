@@ -343,6 +343,7 @@ function WarehouseLayout({
             />
           ))}
         </div>
+        </div>
       </div>
     </section>
   )
