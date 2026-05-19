@@ -199,8 +199,6 @@ function WarehouseLayout({
                 onClearRamp={onClearRamp}
               />
             ))}
-
-            <div className="warehouse-office-box">OFFICE</div>
           </div>
         </div>
 

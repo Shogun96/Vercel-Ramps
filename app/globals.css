@@ -375,17 +375,6 @@ body {
   align-items: stretch;
 }
 
-.warehouse-office-box {
-  border: 2px solid #b9c7d6;
-  border-radius: 0.95rem;
-  background: linear-gradient(180deg, #ffffff 0%, #f5f8fb 100%);
-  display: grid;
-  place-items: center;
-  color: #344256;
-  font-weight: 800;
-  font-size: 0.9rem;
-  min-height: 7.35rem;
-}
 
 .warehouse-ramp-card {
   display: flex;
@@ -636,5 +625,286 @@ body {
 
   .warehouse-kpi-card {
     padding: 0.62rem 0.72rem;
+  }
+}
+
+
+/* -------------------------------------------------------------------------- */
+/* Fullscreen warehouse board refinement                                      */
+/* -------------------------------------------------------------------------- */
+
+html,
+body {
+  height: 100%;
+  overflow: hidden !important;
+}
+
+.warehouse-board-app {
+  height: 100dvh !important;
+  min-height: 100dvh !important;
+  overflow: hidden !important;
+  display: grid !important;
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto !important;
+  gap: 0.5rem !important;
+  padding:
+    max(0.5rem, env(safe-area-inset-top))
+    max(0.5rem, env(safe-area-inset-right))
+    max(0.5rem, env(safe-area-inset-bottom))
+    max(0.5rem, env(safe-area-inset-left)) !important;
+}
+
+.warehouse-board-header {
+  padding: 0.58rem 0.75rem !important;
+  border-radius: 0.85rem !important;
+}
+
+.warehouse-board-title h1 {
+  font-size: clamp(1rem, 1.3vw, 1.25rem) !important;
+}
+
+.warehouse-board-title p {
+  display: none !important;
+}
+
+.warehouse-board-logo {
+  width: 2.25rem !important;
+  height: 2.25rem !important;
+  border-radius: 0.7rem !important;
+}
+
+.warehouse-board-actions {
+  gap: 0.35rem !important;
+}
+
+.sync-pill,
+.control-button {
+  padding: 0.45rem 0.62rem !important;
+  font-size: 0.7rem !important;
+}
+
+.warehouse-kpi-grid {
+  gap: 0.45rem !important;
+}
+
+.warehouse-kpi-card {
+  padding: 0.48rem 0.65rem !important;
+  border-radius: 0.75rem !important;
+}
+
+.warehouse-kpi-card span {
+  font-size: 0.62rem !important;
+}
+
+.warehouse-kpi-card strong {
+  font-size: clamp(1.15rem, 1.75vw, 1.65rem) !important;
+}
+
+.warehouse-board-toolbar {
+  padding: 0.55rem 0.7rem !important;
+  border-radius: 0.85rem !important;
+}
+
+.warehouse-board-toolbar-left h2 {
+  font-size: 0.92rem !important;
+}
+
+.warehouse-board-toolbar-left p {
+  display: none !important;
+}
+
+.selected-ramp-chip {
+  min-width: 8rem !important;
+  padding: 0.45rem 0.62rem !important;
+  border-radius: 0.7rem !important;
+}
+
+.selected-ramp-chip span {
+  font-size: 0.7rem !important;
+}
+
+.selected-ramp-chip strong {
+  font-size: 0.95rem !important;
+}
+
+.ramp-search {
+  height: 2.15rem !important;
+  padding: 0.4rem 0.65rem !important;
+}
+
+.filter-tabs button {
+  padding: 0.33rem 0.52rem !important;
+  font-size: 0.66rem !important;
+}
+
+.warehouse-layout-shell {
+  min-height: 0 !important;
+  height: 100% !important;
+  overflow: hidden !important;
+  padding: 0.5rem !important;
+  border-radius: 0.85rem !important;
+}
+
+.warehouse-layout-board {
+  height: 100% !important;
+  min-height: 0 !important;
+  min-width: 0 !important;
+  display: grid !important;
+  grid-template-columns: minmax(12rem, 16rem) minmax(0, 1fr) minmax(12rem, 16rem) !important;
+  gap: 0.5rem !important;
+  align-items: stretch !important;
+}
+
+.warehouse-layout-left,
+.warehouse-layout-right {
+  min-height: 0 !important;
+  height: 100% !important;
+  display: grid !important;
+  grid-template-rows: repeat(17, minmax(0, 1fr)) !important;
+  gap: 0.28rem !important;
+}
+
+.warehouse-layout-right {
+  grid-template-rows: repeat(16, minmax(0, 1fr)) !important;
+}
+
+.warehouse-layout-center {
+  min-height: 0 !important;
+  height: 100% !important;
+  display: grid !important;
+  grid-template-rows: minmax(0, 1fr) auto !important;
+  gap: 0.45rem !important;
+}
+
+.warehouse-layout-yard {
+  min-height: 0 !important;
+  height: 100% !important;
+  border-radius: 0.85rem !important;
+}
+
+.warehouse-layout-bottom {
+  grid-template-columns: repeat(8, minmax(0, 1fr)) !important;
+  gap: 0.32rem !important;
+}
+
+.warehouse-ramp-card {
+  min-height: 0 !important;
+  border-radius: 0.72rem !important;
+}
+
+.warehouse-ramp-main {
+  grid-template-columns: 2.25rem minmax(0, 1fr) !important;
+  gap: 0.38rem !important;
+  padding: 0.34rem !important;
+  align-items: center !important;
+}
+
+.warehouse-ramp-number {
+  width: 2.25rem !important;
+  min-width: 2.25rem !important;
+  height: 1.85rem !important;
+  border-radius: 0.55rem !important;
+  font-size: 0.78rem !important;
+}
+
+.warehouse-ramp-topline {
+  margin-bottom: 0.22rem !important;
+}
+
+.warehouse-ramp-topline strong {
+  font-size: 0.68rem !important;
+}
+
+.warehouse-ramp-input-grid {
+  gap: 0.22rem !important;
+}
+
+.warehouse-ramp-input {
+  height: 1.65rem !important;
+  min-height: 1.65rem !important;
+  padding: 0.25rem 0.38rem !important;
+  border-radius: 0.5rem !important;
+  font-size: 16px !important;
+}
+
+.warehouse-ramp-actions button {
+  padding: 0.26rem 0.25rem !important;
+  font-size: 0.58rem !important;
+}
+
+.warehouse-ramp-card.compact .warehouse-ramp-main {
+  padding: 0.32rem !important;
+}
+
+.warehouse-ramp-card.compact .warehouse-ramp-actions button {
+  padding: 0.25rem 0.22rem !important;
+  font-size: 0.56rem !important;
+}
+
+.legend {
+  padding: 0.42rem 0.65rem !important;
+  border-radius: 0.85rem !important;
+  gap: 0.75rem !important;
+}
+
+.legend-item {
+  font-size: 0.68rem !important;
+}
+
+.legend-color {
+  width: 0.75rem !important;
+  height: 0.75rem !important;
+}
+
+@media (max-width: 1100px) {
+  .warehouse-board-app {
+    overflow: auto !important;
+    height: auto !important;
+    min-height: 100dvh !important;
+    grid-template-rows: auto auto auto auto auto !important;
+  }
+
+  html,
+  body {
+    overflow: auto !important;
+  }
+
+  .warehouse-layout-shell {
+    overflow: auto !important;
+    height: auto !important;
+  }
+
+  .warehouse-layout-board {
+    min-width: 64rem !important;
+    height: min(78rem, calc(100dvh - 13rem)) !important;
+  }
+}
+
+@media (max-width: 820px) {
+  .warehouse-board-header,
+  .warehouse-board-toolbar {
+    gap: 0.45rem !important;
+  }
+
+  .warehouse-kpi-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+
+  .warehouse-kpi-card span {
+    display: none !important;
+  }
+
+  .warehouse-kpi-card strong {
+    font-size: 1.15rem !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .warehouse-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .warehouse-layout-board {
+    min-width: 58rem !important;
+    height: 72rem !important;
   }
 }
