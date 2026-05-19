@@ -2,11 +2,13 @@
 
 import type React from "react"
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
+import * as XLSX from "xlsx"
 import WarehouseLayout from "./warehouse-layout"
 import Legend from "./legend"
 import HtmlUploader from "./html-uploader"
 import { useSupabaseSync } from "@/contexts/supabase-sync-context"
 import { useLookup } from "@/contexts/lookup-context"
+import { fetchRampMovements, recordRampMovement } from "@/lib/ramp-movements"
 
 export interface RampStatus {
   active: boolean
@@ -28,6 +30,23 @@ const RIGHT_RAMPS = Array.from({ length: 16 }, (_, index) => 20 + index)
 const BOTTOM_RAMPS = Array.from({ length: 8 }, (_, index) => 43 - index)
 
 const normalizeValue = (value: string) => value.trim().toUpperCase()
+
+const getDateTimeLocalValue = (date: Date) => {
+  const offsetMs = date.getTimezoneOffset() * 60_000
+  return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16)
+}
+
+const getStartOfTodayLocal = () => {
+  const date = new Date()
+  date.setHours(0, 0, 0, 0)
+  return getDateTimeLocalValue(date)
+}
+
+const getEndOfTodayLocal = () => {
+  const date = new Date()
+  date.setHours(23, 59, 0, 0)
+  return getDateTimeLocalValue(date)
+}
 
 const createDefaultStatus = (): RampStatus => ({
   active: false,
@@ -75,6 +94,11 @@ function WarehouseVisualizationContent() {
   const [filter, setFilter] = useState<RampFilter>("all")
   const [showUploader, setShowUploader] = useState(false)
   const [showChangeTrailer, setShowChangeTrailer] = useState(false)
+  const [showMovementsExport, setShowMovementsExport] = useState(false)
+  const [movementFrom, setMovementFrom] = useState(getStartOfTodayLocal)
+  const [movementTo, setMovementTo] = useState(getEndOfTodayLocal)
+  const [movementExportResult, setMovementExportResult] = useState<string | null>(null)
+  const [isExportingMovements, setIsExportingMovements] = useState(false)
   const [isToolsPinned, setIsToolsPinned] = useState(false)
   const [changeTruck, setChangeTruck] = useState("")
   const [changeTrailer, setChangeTrailer] = useState("")
@@ -97,6 +121,20 @@ function WarehouseVisualizationContent() {
     },
     [syncRampStatus],
   )
+
+  const logMovement = useCallback((movement: Parameters<typeof recordRampMovement>[0]) => {
+    recordRampMovement(movement).catch((error) => {
+      console.warn("Failed to record movement:", error)
+    })
+  }, [])
+
+  const hasRampChanged = (previous: RampStatus, next: RampStatus) => {
+    return (
+      getRampStateLabel(previous) !== getRampStateLabel(next) ||
+      normalizeValue(previous.truckValue || "") !== normalizeValue(next.truckValue || "") ||
+      normalizeValue(previous.trailerValue || "") !== normalizeValue(next.trailerValue || "")
+    )
+  }
 
   const findTrailerForTruck = useCallback(
     (truck: string) => {
@@ -259,12 +297,31 @@ function WarehouseVisualizationContent() {
           [rampNumber]: nextRampStatus,
         }
 
+        if (hasRampChanged(currentStatus, nextRampStatus)) {
+          logMovement({
+            event_type: isOccupied ? "ramp_cleared" : "ramp_status_changed",
+            ramp_number: rampNumber,
+            previous_status: getRampStateLabel(currentStatus),
+            new_status: getRampStateLabel(nextRampStatus),
+            previous_truck: currentStatus.truckValue || null,
+            new_truck: nextRampStatus.truckValue || null,
+            previous_trailer: currentStatus.trailerValue || null,
+            new_trailer: nextRampStatus.trailerValue || null,
+            truck: nextRampStatus.truckValue || currentStatus.truckValue || null,
+            trailer: nextRampStatus.trailerValue || currentStatus.trailerValue || null,
+            changed_field: "status",
+            source: "ramp_number_click",
+            device_id: null,
+            notes: isOccupied ? "Ramp cleared by clicking ramp number." : "Ramp marked occupied by clicking ramp number.",
+          })
+        }
+
         setSelectedRamp(isOccupied ? null : rampNumber)
         saveRampStatus(nextStatus)
         return nextStatus
       })
     },
-    [saveRampStatus],
+    [logMovement, saveRampStatus],
   )
 
   const handleInputChange = useCallback(
@@ -278,9 +335,29 @@ function WarehouseVisualizationContent() {
         const currentStatus = previous[rampNumber] || createDefaultStatus()
 
         if (!cleanValue) {
+          const nextRampStatus = createDefaultStatus()
           const nextStatus = {
             ...previous,
-            [rampNumber]: createDefaultStatus(),
+            [rampNumber]: nextRampStatus,
+          }
+
+          if (hasRampChanged(currentStatus, nextRampStatus)) {
+            logMovement({
+              event_type: "ramp_cleared",
+              ramp_number: rampNumber,
+              previous_status: getRampStateLabel(currentStatus),
+              new_status: getRampStateLabel(nextRampStatus),
+              previous_truck: currentStatus.truckValue || null,
+              new_truck: null,
+              previous_trailer: currentStatus.trailerValue || null,
+              new_trailer: null,
+              truck: currentStatus.truckValue || null,
+              trailer: currentStatus.trailerValue || null,
+              changed_field: inputType,
+              source: "input_cleared",
+              device_id: null,
+              notes: `${inputType} field cleared; ramp reset to free.`,
+            })
           }
 
           saveRampStatus(nextStatus)
@@ -313,23 +390,44 @@ function WarehouseVisualizationContent() {
           (lowerTruckValue !== "" && lowerTruckValue !== "defect") ||
           (lowerTrailerValue !== "" && lowerTrailerValue !== "defect")
 
+        const nextRampStatus = {
+          ...updatedStatus,
+          active: hasAnyInput || isYellow,
+          red: hasAnyInput && !isYellow,
+          yellow: isYellow,
+          hasTruck: hasAnyInput && !isYellow,
+          isExiting: false,
+        }
+
         const nextStatus = {
           ...previous,
-          [rampNumber]: {
-            ...updatedStatus,
-            active: hasAnyInput || isYellow,
-            red: hasAnyInput && !isYellow,
-            yellow: isYellow,
-            hasTruck: hasAnyInput && !isYellow,
-            isExiting: false,
-          },
+          [rampNumber]: nextRampStatus,
+        }
+
+        if (hasRampChanged(currentStatus, nextRampStatus)) {
+          logMovement({
+            event_type: "ramp_input_changed",
+            ramp_number: rampNumber,
+            previous_status: getRampStateLabel(currentStatus),
+            new_status: getRampStateLabel(nextRampStatus),
+            previous_truck: currentStatus.truckValue || null,
+            new_truck: nextRampStatus.truckValue || null,
+            previous_trailer: currentStatus.trailerValue || null,
+            new_trailer: nextRampStatus.trailerValue || null,
+            truck: nextRampStatus.truckValue || null,
+            trailer: nextRampStatus.trailerValue || null,
+            changed_field: inputType,
+            source: "ramp_input",
+            device_id: null,
+            notes: inputType === "truck" ? "Truck input changed; trailer lookup applied." : "Trailer input changed; truck lookup applied.",
+          })
         }
 
         saveRampStatus(nextStatus)
         return nextStatus
       })
     },
-    [findTrailerForTruck, findTruckForTrailer, saveRampStatus],
+    [findTrailerForTruck, findTruckForTrailer, logMovement, saveRampStatus],
   )
 
   const handleChangeTrailerSubmit = useCallback(
@@ -351,12 +449,15 @@ function WarehouseVisualizationContent() {
         const lookupMessage = await addTruckTrailerPair(cleanTruck, cleanTrailer)
 
         let updatedRampCount = 0
+        let previousTrailerFromRamp: string | null = null
         const nextStatus: Record<number, RampStatus> = {}
 
         RAMP_NUMBERS.forEach((rampNumber) => {
           const current = rampStatus[rampNumber] || createDefaultStatus()
           if (normalizeValue(current.truckValue || "") === cleanTruck) {
             updatedRampCount += 1
+            previousTrailerFromRamp = previousTrailerFromRamp || current.trailerValue || null
+
             const updated = {
               ...current,
               trailerValue: cleanTrailer,
@@ -367,11 +468,49 @@ function WarehouseVisualizationContent() {
               hasTruck: true,
               isExiting: false,
             }
+
+            logMovement({
+              event_type: "truck_trailer_changed",
+              ramp_number: rampNumber,
+              previous_status: getRampStateLabel(current),
+              new_status: getRampStateLabel(updated),
+              previous_truck: current.truckValue || null,
+              new_truck: cleanTruck,
+              previous_trailer: current.trailerValue || null,
+              new_trailer: cleanTrailer,
+              truck: cleanTruck,
+              trailer: cleanTrailer,
+              changed_field: "trailer",
+              source: "change_trailer_tool",
+              device_id: null,
+              notes: "Trailer changed for truck from Tools.",
+            })
+
             nextStatus[rampNumber] = updated
           } else {
             nextStatus[rampNumber] = current
           }
         })
+
+        if (updatedRampCount === 0) {
+          const previousLookupTrailer = findTrailerForTruck(cleanTruck)
+          logMovement({
+            event_type: "truck_trailer_changed",
+            ramp_number: null,
+            previous_status: null,
+            new_status: null,
+            previous_truck: cleanTruck,
+            new_truck: cleanTruck,
+            previous_trailer: previousLookupTrailer || previousTrailerFromRamp,
+            new_trailer: cleanTrailer,
+            truck: cleanTruck,
+            trailer: cleanTrailer,
+            changed_field: "trailer",
+            source: "change_trailer_tool",
+            device_id: null,
+            notes: "Trailer changed for truck in lookup database; truck was not active on a ramp.",
+          })
+        }
 
         if (updatedRampCount > 0) {
           setRampStatus(nextStatus)
@@ -390,7 +529,7 @@ function WarehouseVisualizationContent() {
         setIsChangingTrailer(false)
       }
     },
-    [addTruckTrailerPair, changeTrailer, changeTruck, forceRefresh, rampStatus, saveRampStatus],
+    [addTruckTrailerPair, changeTrailer, changeTruck, findTrailerForTruck, forceRefresh, logMovement, rampStatus, saveRampStatus],
   )
 
   const handleClearAll = useCallback(() => {
@@ -398,39 +537,122 @@ function WarehouseVisualizationContent() {
     if (!confirmed) return
 
     const nextStatus = initializeRampStatus()
+
+    RAMP_NUMBERS.forEach((rampNumber) => {
+      const currentStatus = rampStatus[rampNumber] || createDefaultStatus()
+      const nextRampStatus = nextStatus[rampNumber] || createDefaultStatus()
+
+      if (hasRampChanged(currentStatus, nextRampStatus)) {
+        logMovement({
+          event_type: "clear_all",
+          ramp_number: rampNumber,
+          previous_status: getRampStateLabel(currentStatus),
+          new_status: getRampStateLabel(nextRampStatus),
+          previous_truck: currentStatus.truckValue || null,
+          new_truck: null,
+          previous_trailer: currentStatus.trailerValue || null,
+          new_trailer: null,
+          truck: currentStatus.truckValue || null,
+          trailer: currentStatus.trailerValue || null,
+          changed_field: "status",
+          source: "tools_clear_all",
+          device_id: null,
+          notes: "Ramp cleared from Tools clear all.",
+        })
+      }
+    })
+
     setRampStatus(nextStatus)
     setSelectedRamp(null)
     setRampSearch("")
     setFilter("all")
     saveRampStatus(nextStatus)
-  }, [saveRampStatus])
+  }, [logMovement, rampStatus, saveRampStatus])
 
-  const handleExportCsv = useCallback(() => {
-    const rows = [
-      ["Ramp", "Status", "Truck", "Trailer"],
-      ...RAMP_NUMBERS.map((rampNumber) => {
-        const status = rampStatus[rampNumber] || createDefaultStatus()
-        return [
-          String(rampNumber),
-          getRampStateLabel(status),
-          status.truckValue || "",
-          status.trailerValue || "",
-        ]
-      }),
-    ]
+  const handleExportMovements = useCallback(async () => {
+    const fromDate = new Date(movementFrom)
+    const toDate = new Date(movementTo)
 
-    const csv = rows
-      .map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(","))
-      .join("\n")
+    if (!movementFrom || !movementTo || Number.isNaN(fromDate.getTime()) || Number.isNaN(toDate.getTime())) {
+      setMovementExportResult("Please select a valid date/time interval.")
+      return
+    }
 
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement("a")
-    link.href = url
-    link.download = `warehouse-ramp-status-${new Date().toISOString().slice(0, 10)}.csv`
-    link.click()
-    URL.revokeObjectURL(url)
-  }, [rampStatus])
+    if (fromDate.getTime() > toDate.getTime()) {
+      setMovementExportResult("The start date must be before the end date.")
+      return
+    }
+
+    setIsExportingMovements(true)
+    setMovementExportResult(null)
+
+    try {
+      const movements = await fetchRampMovements(fromDate.toISOString(), toDate.toISOString())
+
+      if (movements.length === 0) {
+        setMovementExportResult("No movements found in this interval.")
+        return
+      }
+
+      const excelRows = movements.map((movement) => {
+        const date = new Date(movement.created_at)
+        return {
+          Date: date.toLocaleDateString(),
+          Time: date.toLocaleTimeString(),
+          "Created at": date.toLocaleString(),
+          Event: movement.event_type,
+          Ramp: movement.ramp_number ?? "",
+          "Previous status": movement.previous_status ?? "",
+          "New status": movement.new_status ?? "",
+          "Previous truck": movement.previous_truck ?? "",
+          "New truck": movement.new_truck ?? "",
+          "Previous trailer": movement.previous_trailer ?? "",
+          "New trailer": movement.new_trailer ?? "",
+          Truck: movement.truck ?? "",
+          Trailer: movement.trailer ?? "",
+          "Changed field": movement.changed_field ?? "",
+          Source: movement.source ?? "",
+          Device: movement.device_id ?? "",
+          Notes: movement.notes ?? "",
+        }
+      })
+
+      const workbook = XLSX.utils.book_new()
+      const worksheet = XLSX.utils.json_to_sheet(excelRows)
+
+      worksheet["!cols"] = [
+        { wch: 14 },
+        { wch: 12 },
+        { wch: 22 },
+        { wch: 24 },
+        { wch: 8 },
+        { wch: 16 },
+        { wch: 16 },
+        { wch: 18 },
+        { wch: 18 },
+        { wch: 18 },
+        { wch: 18 },
+        { wch: 18 },
+        { wch: 18 },
+        { wch: 16 },
+        { wch: 20 },
+        { wch: 20 },
+        { wch: 34 },
+      ]
+
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Ramp movements")
+      XLSX.writeFile(
+        workbook,
+        `ramp-movements-${movementFrom.replace(/[:T]/g, "-")}_to_${movementTo.replace(/[:T]/g, "-")}.xlsx`,
+      )
+
+      setMovementExportResult(`Exported ${movements.length} movement${movements.length === 1 ? "" : "s"}.`)
+    } catch (error: any) {
+      setMovementExportResult(error?.message || "Could not export movements.")
+    } finally {
+      setIsExportingMovements(false)
+    }
+  }, [movementFrom, movementTo])
 
   return (
     <div id="app" className="warehouse-board-app">
@@ -496,7 +718,10 @@ function WarehouseVisualizationContent() {
           <button type="button" onClick={() => setShowUploader(true)}>
             DB
           </button>
-          <button type="button" onClick={handleExportCsv}>
+          <button type="button" onClick={() => {
+            setMovementExportResult(null)
+            setShowMovementsExport(true)
+          }}>
             CSV
           </button>
           <button type="button" onClick={() => {
@@ -527,6 +752,55 @@ function WarehouseVisualizationContent() {
             <div className="database-popout-content">
               <HtmlUploader />
             </div>
+          </div>
+        </div>
+      ) : null}
+
+      {showMovementsExport ? (
+        <div className="database-popout" role="dialog" aria-modal="true" aria-label="Export ramp movements">
+          <div className="database-popout-backdrop" onClick={() => setShowMovementsExport(false)} />
+          <div className="database-popout-panel movements-export-panel">
+            <div className="database-popout-header">
+              <div>
+                <h2>Export movements</h2>
+                <p>Select the interval to export ramp status, truck, trailer and trailer-change movements.</p>
+              </div>
+              <button type="button" onClick={() => setShowMovementsExport(false)} aria-label="Close export movements">
+                ×
+              </button>
+            </div>
+
+            <form
+              className="movements-export-form"
+              onSubmit={(event) => {
+                event.preventDefault()
+                handleExportMovements()
+              }}
+            >
+              <label>
+                <span>From</span>
+                <input
+                  type="datetime-local"
+                  value={movementFrom}
+                  onChange={(event) => setMovementFrom(event.target.value)}
+                />
+              </label>
+
+              <label>
+                <span>To</span>
+                <input
+                  type="datetime-local"
+                  value={movementTo}
+                  onChange={(event) => setMovementTo(event.target.value)}
+                />
+              </label>
+
+              <button type="submit" disabled={isExportingMovements}>
+                {isExportingMovements ? "Exporting..." : "Download Excel"}
+              </button>
+
+              {movementExportResult ? <p className="change-trailer-result">{movementExportResult}</p> : null}
+            </form>
           </div>
         </div>
       ) : null}
