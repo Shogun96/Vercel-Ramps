@@ -1572,3 +1572,131 @@ body {
     height: max(43rem, calc(100dvh - 13rem)) !important;
   }
 }
+
+
+/* -------------------------------------------------------------------------- */
+/* Compact warehouse center refinement                                        */
+/* -------------------------------------------------------------------------- */
+/* The middle empty warehouse area was too wide. This makes the board feel
+   like one connected warehouse layout instead of two side lists separated by
+   a huge empty space. */
+
+.warehouse-board-app {
+  --side-column-width: clamp(10rem, 11.2vw, 12.6rem) !important;
+  --middle-width: clamp(27rem, 45vw, 52rem) !important;
+  --bottom-row-height: clamp(4.9rem, 8.4vh, 5.9rem) !important;
+  --layout-gap: clamp(0.26rem, 0.42vw, 0.45rem) !important;
+}
+
+.warehouse-layout-shell {
+  display: grid !important;
+  place-items: center !important;
+  background:
+    radial-gradient(circle at center, rgba(37, 99, 235, 0.055), transparent 34rem),
+    rgba(255, 255, 255, 0.96) !important;
+}
+
+.warehouse-layout-board {
+  width: min(100%, calc((var(--side-column-width) * 2) + var(--middle-width) + (var(--layout-gap) * 2))) !important;
+  max-width: 100% !important;
+  justify-self: center !important;
+  grid-template-columns: var(--side-column-width) minmax(24rem, var(--middle-width)) var(--side-column-width) !important;
+  justify-content: center !important;
+}
+
+/* Less empty middle, still visually a warehouse. */
+.warehouse-layout-yard {
+  border-style: solid !important;
+  border-color: #d7e0ea !important;
+  background:
+    linear-gradient(90deg, rgba(148, 163, 184, 0.11) 1px, transparent 1px),
+    linear-gradient(rgba(148, 163, 184, 0.11) 1px, transparent 1px),
+    linear-gradient(180deg, #f1f6fb 0%, #f9fbfe 100%) !important;
+  background-size: 1.55rem 1.55rem, 1.55rem 1.55rem, auto !important;
+}
+
+.warehouse-layout-watermark {
+  font-size: clamp(1.7rem, 3.6vw, 3.65rem) !important;
+  letter-spacing: 0.13em !important;
+  color: rgba(100, 116, 139, 0.105) !important;
+}
+
+.warehouse-layout-zone-label {
+  font-size: clamp(0.55rem, 0.66vw, 0.68rem) !important;
+  padding: 0.22rem 0.4rem !important;
+}
+
+/* Make the side cards slightly cleaner so the compact board looks intentional. */
+.warehouse-ramp-card {
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.045) !important;
+}
+
+.warehouse-ramp-card.selected {
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.16), 0 7px 18px rgba(15, 23, 42, 0.08) !important;
+}
+
+/* Bottom row should visually belong to the center warehouse, not stretch too far. */
+.warehouse-layout-bottom {
+  width: 100% !important;
+}
+
+.warehouse-ramp-card.compact .warehouse-ramp-input-grid {
+  grid-template-columns: 1fr 1fr !important;
+}
+
+/* Wide desktop: keep the warehouse compact, centered, and not stretched. */
+@media (min-width: 1500px) {
+  .warehouse-board-app {
+    --side-column-width: clamp(10.2rem, 10.5vw, 12.4rem) !important;
+    --middle-width: clamp(36rem, 42vw, 50rem) !important;
+  }
+
+  .warehouse-layout-board {
+    width: calc((var(--side-column-width) * 2) + var(--middle-width) + (var(--layout-gap) * 2)) !important;
+  }
+}
+
+/* Normal laptops: slightly reduce the middle more so all cards stay readable. */
+@media (min-width: 1181px) and (max-width: 1499px) {
+  .warehouse-board-app {
+    --side-column-width: clamp(9.8rem, 12vw, 11.8rem) !important;
+    --middle-width: clamp(28rem, 42vw, 42rem) !important;
+  }
+}
+
+/* Tablet: preserve the shape, but do not make the user scroll through a massive empty center. */
+@media (max-width: 1180px) {
+  .warehouse-layout-shell {
+    place-items: start center !important;
+  }
+
+  .warehouse-layout-board {
+    width: 58rem !important;
+    min-width: 58rem !important;
+    grid-template-columns: 10rem 37rem 10rem !important;
+    height: max(43rem, calc(100dvh - 12rem)) !important;
+  }
+
+  .warehouse-layout-yard {
+    background-size: 1.35rem 1.35rem, 1.35rem 1.35rem, auto !important;
+  }
+}
+
+/* Phone: smaller fixed board for internal scroll, still usable. */
+@media (max-width: 640px) {
+  .warehouse-layout-board {
+    width: 52rem !important;
+    min-width: 52rem !important;
+    grid-template-columns: 9rem 33rem 9rem !important;
+    height: max(41rem, calc(100dvh - 13rem)) !important;
+  }
+
+  .warehouse-ramp-main {
+    grid-template-columns: 1.85rem minmax(0, 1fr) !important;
+  }
+
+  .warehouse-ramp-number {
+    width: 1.85rem !important;
+    min-width: 1.85rem !important;
+  }
+}
