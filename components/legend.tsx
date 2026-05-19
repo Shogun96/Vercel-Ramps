@@ -7,11 +7,15 @@ export default function Legend() {
       </div>
       <div className="legend-item">
         <div className="legend-color active"></div>
-        <span>Occupied</span>
+        <span>Occupied / truck assigned</span>
       </div>
       <div className="legend-item">
         <div className="legend-color defect"></div>
-        <span>Defect</span>
+        <span>Defect / blocked</span>
+      </div>
+      <div className="legend-item">
+        <div className="legend-color selected"></div>
+        <span>Selected ramp</span>
       </div>
     </div>
   )

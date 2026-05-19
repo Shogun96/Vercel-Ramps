@@ -22,6 +22,7 @@ interface WarehouseLayoutProps {
   onRampClick: (rampNumber: number) => void
   onInputChange: (rampNumber: number, value: string, inputType: "truck" | "trailer") => void
   orientation: "portrait" | "landscape"
+  selectedRamp?: number | null
 }
 
 // Warehouse configuration with EXACTLY equal input sizes
@@ -197,6 +198,7 @@ const Ramp = memo(
     rotation,
     status,
     onClick,
+    selected,
   }: {
     rampNum: number
     x: number
@@ -204,6 +206,7 @@ const Ramp = memo(
     rotation: number
     status: RampStatus
     onClick: () => void
+    selected?: boolean
   }) => (
     <>
       {/* Loading dock detail */}
@@ -214,7 +217,7 @@ const Ramp = memo(
 
       {/* Ramp */}
       <g
-        className={`ramp ${status.active ? "active" : ""} ${status.yellow ? "yellow" : ""}`}
+        className={`ramp ${status.active ? "active" : ""} ${status.yellow ? "yellow" : ""} ${selected ? "selected" : ""}`}
         onClick={onClick}
         transform={`translate(${x}, ${y}) rotate(${rotation})`}
       >
@@ -239,6 +242,7 @@ function WarehouseLayout({
   onRampClick,
   onInputChange,
   orientation = "landscape",
+  selectedRamp = null,
 }: WarehouseLayoutProps) {
   // Track recently filled inputs for highlighting
   const [recentlyFilled, setRecentlyFilled] = useState<{
@@ -611,7 +615,20 @@ function WarehouseLayout({
 
   return (
     <svg width={config.svgWidth} height={config.svgHeight} viewBox={`0 0 ${config.svgWidth} ${config.svgHeight}`}>
-      <rect x="0" y="0" width={config.svgWidth} height={config.svgHeight} fill="#888888" />
+      <defs>
+        <linearGradient id="yardGradient" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#111827" />
+          <stop offset="100%" stopColor="#334155" />
+        </linearGradient>
+        <linearGradient id="hallGradient" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#475569" />
+          <stop offset="100%" stopColor="#1f2937" />
+        </linearGradient>
+        <filter id="softShadow" x="-15%" y="-15%" width="130%" height="130%">
+          <feDropShadow dx="0" dy="8" stdDeviation="8" floodColor="#020617" floodOpacity="0.22" />
+        </filter>
+      </defs>
+      <rect x="0" y="0" width={config.svgWidth} height={config.svgHeight} fill="url(#yardGradient)" />
 
       {/* Parking areas */}
       <rect
@@ -619,21 +636,21 @@ function WarehouseLayout({
         y={config.buildingY}
         width={config.parkingZoneWidth}
         height={config.buildingHeight}
-        fill="#aaaaaa"
+        fill="#64748b"
       />
       <rect
         x={config.buildingX + config.buildingWidth}
         y={config.buildingY}
         width={config.parkingZoneWidth}
         height={config.buildingHeight}
-        fill="#aaaaaa"
+        fill="#64748b"
       />
       <rect
         x={config.buildingX}
         y={config.buildingY + config.buildingHeight}
         width={config.buildingWidth}
         height={config.parkingZoneWidth}
-        fill="#aaaaaa"
+        fill="#64748b"
       />
 
       {/* Main warehouse building */}
@@ -642,9 +659,11 @@ function WarehouseLayout({
         y={config.buildingY}
         width={config.buildingWidth}
         height={config.buildingHeight}
-        fill="#999999"
-        stroke="#666666"
+        fill="url(#hallGradient)"
+        stroke="#0f172a"
         strokeWidth="8"
+        rx="18"
+        filter="url(#softShadow)"
       />
 
       {/* Central area */}
@@ -653,10 +672,23 @@ function WarehouseLayout({
         y={config.buildingY + 50}
         width={centralAreaWidth}
         height={config.buildingHeight - 200}
-        fill="#777777"
-        stroke="#666666"
+        fill="#1e293b"
+        stroke="#0f172a"
         strokeWidth="2"
       />
+
+      <text x={config.buildingX + config.buildingWidth / 2} y={config.buildingY + 115} textAnchor="middle" className="warehouse-hall-label">
+        WAREHOUSE HALL
+      </text>
+      <text x={config.buildingX + 170} y={config.buildingY + 42} textAnchor="middle" className="warehouse-zone-label">
+        60 → 44
+      </text>
+      <text x={config.buildingX + config.buildingWidth - 170} y={config.buildingY + 42} textAnchor="middle" className="warehouse-zone-label">
+        20 → 35
+      </text>
+      <text x={config.buildingX + config.buildingWidth / 2} y={config.buildingY + config.buildingHeight - 118} textAnchor="middle" className="warehouse-zone-label">
+        43 → 36
+      </text>
 
       {/* Input areas */}
       <rect
@@ -664,8 +696,8 @@ function WarehouseLayout({
         y={config.buildingY + 20}
         width="320"
         height={config.buildingHeight - 40}
-        fill="#d9d9d9"
-        stroke="#cccccc"
+        fill="#e2e8f0"
+        stroke="#94a3b8"
         strokeWidth="1"
       />
       <rect
@@ -673,8 +705,8 @@ function WarehouseLayout({
         y={config.buildingY + 20}
         width="320"
         height={config.buildingHeight - 40}
-        fill="#d9d9d9"
-        stroke="#cccccc"
+        fill="#e2e8f0"
+        stroke="#94a3b8"
         strokeWidth="1"
       />
       <rect
@@ -682,8 +714,8 @@ function WarehouseLayout({
         y={config.buildingY + config.buildingHeight - 150}
         width={config.buildingWidth - 160}
         height="100"
-        fill="#d9d9d9"
-        stroke="#cccccc"
+        fill="#e2e8f0"
+        stroke="#94a3b8"
         strokeWidth="1"
       />
 
@@ -715,6 +747,7 @@ function WarehouseLayout({
               y={position.y}
               rotation={rotation}
               status={status}
+              selected={selectedRamp === rampNum}
               onClick={() => handleRampClick(rampNum)}
             />
 

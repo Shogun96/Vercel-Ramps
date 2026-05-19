@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState, useEffect, useRef, useCallback } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 
 interface RampInputFieldProps {
   value: string
@@ -24,7 +24,6 @@ export default function RampInputField({
   const inputRef = useRef<HTMLInputElement>(null)
   const previousValueRef = useRef(value)
 
-  // Update local value when prop value changes
   useEffect(() => {
     if (value !== previousValueRef.current) {
       setLocalValue(value)
@@ -32,47 +31,63 @@ export default function RampInputField({
     }
   }, [value])
 
-  // Handle input change - now triggers onChange immediately for every keystroke
-  const handleChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const newValue = e.target.value
-      setLocalValue(newValue)
-
-      // Immediately trigger the onChange to perform lookup on every keystroke
-      onChange(newValue)
-      previousValueRef.current = newValue
+  const commitValue = useCallback(
+    (nextValue: string) => {
+      setLocalValue(nextValue)
+      onChange(nextValue)
+      previousValueRef.current = nextValue
     },
     [onChange],
   )
 
-  // Still keep blur handler for any edge cases
-  const handleBlur = useCallback(() => {
-    // Only trigger if somehow the value changed without triggering handleChange
-    if (localValue !== previousValueRef.current) {
-      onChange(localValue)
-      previousValueRef.current = localValue
-    }
-  }, [localValue, onChange])
+  const handleChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      commitValue(event.target.value.toUpperCase())
+    },
+    [commitValue],
+  )
 
-  // Keep Enter key handler for convenience
-  const handleKeyPress = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
+  const handleBlur = useCallback(() => {
+    if (localValue !== previousValueRef.current) {
+      commitValue(localValue)
+    }
+  }, [commitValue, localValue])
+
+  const handleKeyDown = useCallback((event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Enter") {
       inputRef.current?.blur()
     }
   }, [])
 
   return (
-    <input
-      ref={inputRef}
-      type="text"
-      value={localValue}
-      onChange={handleChange}
-      onBlur={handleBlur}
-      onKeyPress={handleKeyPress}
-      className={`input-field ${isHighlighted ? "highlight-filled" : ""}`}
-      placeholder={placeholder}
-      data-ramp={rampNum}
-      data-input-type={inputType}
-    />
+    <div className={`input-field-shell ${isHighlighted ? "highlight-filled" : ""}`}>
+      <span className="input-field-label">{inputType === "truck" ? "TRK" : "TRL"}</span>
+      <input
+        ref={inputRef}
+        type="text"
+        value={localValue}
+        onChange={handleChange}
+        onBlur={handleBlur}
+        onKeyDown={handleKeyDown}
+        className="input-field"
+        placeholder={placeholder}
+        data-ramp={rampNum}
+        data-input-type={inputType}
+        autoComplete="off"
+        autoCorrect="off"
+        spellCheck={false}
+        inputMode="text"
+      />
+      {localValue ? (
+        <button
+          type="button"
+          className="input-clear-button"
+          onClick={() => commitValue("")}
+          aria-label={`Clear ${inputType} for ramp ${rampNum}`}
+        >
+          ×
+        </button>
+      ) : null}
+    </div>
   )
 }

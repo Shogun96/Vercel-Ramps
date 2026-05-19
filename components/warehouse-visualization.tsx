@@ -1,11 +1,10 @@
 "use client"
 
-import { useState, useEffect, useRef, useCallback, memo } from "react"
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import WarehouseLayout from "./warehouse-layout"
 import Legend from "./legend"
 import HtmlUploader from "./html-uploader"
-import { LookupProvider } from "@/contexts/lookup-context"
-import { SupabaseSyncProvider, useSupabaseSync } from "@/contexts/supabase-sync-context"
+import { useSupabaseSync } from "@/contexts/supabase-sync-context"
 
 export interface RampStatus {
   active: boolean
@@ -18,7 +17,12 @@ export interface RampStatus {
   isExiting?: boolean
 }
 
-// Create a default status object to use as fallback
+type RampState = "occupied" | "free" | "defect"
+type RampFilter = "all" | RampState
+
+const RAMP_NUMBERS = Array.from({ length: 41 }, (_, index) => index + 20)
+const TRUCK_EXIT_ANIMATION_DURATION = 1800
+
 const createDefaultStatus = (): RampStatus => ({
   active: false,
   red: false,
@@ -30,125 +34,71 @@ const createDefaultStatus = (): RampStatus => ({
   isExiting: false,
 })
 
-// Animation duration constants
-const TRUCK_EXIT_ANIMATION_DURATION = 1800  // 1.6 seconds (matches CSS animation)
+const initializeRampStatus = () => {
+  const status: Record<number, RampStatus> = {}
+  RAMP_NUMBERS.forEach((rampNumber) => {
+    status[rampNumber] = createDefaultStatus()
+  })
+  return status
+}
+
+const getRampState = (status?: RampStatus): RampState => {
+  if (!status) return "free"
+  if (status.yellow) return "defect"
+  if (status.active || status.red || status.truckValue || status.trailerValue) return "occupied"
+  return "free"
+}
+
+const getRampStateLabel = (status?: RampStatus) => {
+  const state = getRampState(status)
+  if (state === "occupied") return "Occupied"
+  if (state === "defect") return "Defect"
+  return "Free"
+}
 
 function WarehouseVisualizationContent() {
   const isMounted = useRef(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const initialLoadDone = useRef(false)
 
-  // Get Supabase sync functions (only for HTML DB)
-  const { syncRampStatus, isInitializing, isSupabaseAvailable } = useSupabaseSync()
+  const { syncRampStatus, isInitializing, isSupabaseAvailable, connectionStatus } = useSupabaseSync()
 
-  // Initialize with empty state first, then load from localStorage in useEffect
   const [rampStatus, setRampStatus] = useState<Record<number, RampStatus>>({})
   const [scale, setScale] = useState(1)
   const [isReady, setIsReady] = useState(false)
   const [orientation, setOrientation] = useState<"portrait" | "landscape">("landscape")
-  const [showUploader, setShowUploader] = useState(true) // Show uploader by default
+  const [showUploader, setShowUploader] = useState(false)
+  const [selectedRamp, setSelectedRamp] = useState<number | null>(null)
+  const [rampSearch, setRampSearch] = useState("")
+  const [filter, setFilter] = useState<RampFilter>("all")
+  const [lastLocalSave, setLastLocalSave] = useState<Date | null>(null)
 
-  // Load saved status from localStorage - in useEffect to avoid state updates during render
-  useEffect(() => {
-    if (initialLoadDone.current) return
-
-    // Mark as loaded to prevent multiple loads
-    initialLoadDone.current = true
-
-    if (typeof window !== "undefined") {
-      try {
-        // Load from LOCAL ONLY storage key
-        const savedStatus = localStorage.getItem("warehouseRampStatus_localOnly")
-        if (savedStatus) {
-          const parsedStatus = JSON.parse(savedStatus)
-          // Validate and ensure all ramp numbers have proper status objects
-          const validatedStatus: Record<number, RampStatus> = {}
-
-          // Initialize all valid ramp numbers (20-60)
-          for (let i = 20; i <= 60; i++) {
-            validatedStatus[i] = parsedStatus[i]
-              ? { ...createDefaultStatus(), ...parsedStatus[i] }
-              : createDefaultStatus()
-          }
-
-          setRampStatus(validatedStatus)
-          console.log("💾 Loaded ramp status from LOCAL STORAGE ONLY")
-        } else {
-          // Initialize with default values for all ramps
-          const status: Record<number, RampStatus> = {}
-          for (let i = 20; i <= 60; i++) {
-            status[i] = createDefaultStatus()
-          }
-          setRampStatus(status)
-          console.log("🆕 Initialized default ramp status")
-        }
-      } catch (e) {
-        console.error("❌ Failed to load ramp status from localStorage", e)
-        // Initialize with default values on error
-        const status: Record<number, RampStatus> = {}
-        for (let i = 20; i <= 60; i++) {
-          status[i] = createDefaultStatus()
-        }
-        setRampStatus(status)
-      }
-    }
-  }, [])
-
-  // Save status to localStorage ONLY (no Supabase for ramp status)
   const saveRampStatus = useCallback(
     (status: Record<number, RampStatus>) => {
-      if (typeof window !== "undefined") {
-        try {
-          // Save to localStorage using local-only sync function
-          syncRampStatus(status).catch((error) => {
-            console.error("❌ Error saving ramp status locally:", error)
-          })
-        } catch (e) {
-          console.error("❌ Failed to save ramp status", e)
-        }
+      if (typeof window === "undefined") return
+
+      try {
+        syncRampStatus(status).catch((error) => {
+          console.error("Error saving ramp status locally:", error)
+        })
+        setLastLocalSave(new Date())
+      } catch (error) {
+        console.error("Failed to save ramp status", error)
       }
     },
     [syncRampStatus],
   )
 
-  // Function to update orientation state
   const updateOrientation = useCallback(() => {
-    if (window.innerHeight > window.innerWidth) {
-      setOrientation("portrait")
-    } else {
-      setOrientation("landscape")
-    }
+    if (typeof window === "undefined") return
+    setOrientation(window.innerHeight > window.innerWidth ? "portrait" : "landscape")
   }, [])
 
-  // Set mounted flag and mark as ready after initial render
-  useEffect(() => {
-    isMounted.current = true
-    setIsReady(true)
-    updateOrientation()
-    updateScale()
-
-    const handleResize = () => {
-      updateOrientation()
-      updateScale()
-    }
-
-    window.addEventListener("resize", handleResize)
-    window.addEventListener("orientationchange", handleResize)
-
-    return () => {
-      isMounted.current = false
-      window.removeEventListener("resize", handleResize)
-      window.removeEventListener("orientationchange", handleResize)
-    }
-  }, [updateOrientation])
-
-  // Scale visualization based on window size and orientation
   const updateScale = useCallback(() => {
     if (!isMounted.current) return
 
     const container = containerRef.current
-    const visualization = document.querySelector("#warehouse-svg")
-
+    const visualization = document.querySelector("#warehouse-svg") as HTMLElement | null
     if (!container || !visualization) return
 
     const containerWidth = container.clientWidth
@@ -158,37 +108,136 @@ function WarehouseVisualizationContent() {
 
     if (!containerWidth || !containerHeight || !visualizationWidth || !visualizationHeight) return
 
-    if (window.innerHeight > window.innerWidth) {
-      // Portrait mode - prioritize fitting width
-      const scaleX = (containerWidth - 20) / visualizationWidth
-      setScale(Math.max(scaleX, 0.15))
-    } else {
-      // Landscape mode - balance width and height
-      const scaleX = (containerWidth - 40) / visualizationWidth
-      const scaleY = (containerHeight - 40) / visualizationHeight
-      const newScale = Math.min(scaleX, scaleY, 0.9)
-      setScale(Math.max(newScale, 0.2))
+    const safeWidth = Math.max(containerWidth - 24, 100)
+    const safeHeight = Math.max(containerHeight - 24, 100)
+    const scaleX = safeWidth / visualizationWidth
+    const scaleY = safeHeight / visualizationHeight
+
+    const nextScale =
+      window.innerHeight > window.innerWidth
+        ? Math.min(scaleX, 0.72)
+        : Math.min(scaleX, scaleY, 0.96)
+
+    setScale(Math.max(nextScale, 0.18))
+  }, [])
+
+  useEffect(() => {
+    if (initialLoadDone.current) return
+    initialLoadDone.current = true
+
+    if (typeof window === "undefined") return
+
+    try {
+      const savedStatus = localStorage.getItem("warehouseRampStatus_localOnly")
+      if (savedStatus) {
+        const parsedStatus = JSON.parse(savedStatus)
+        const validatedStatus = initializeRampStatus()
+
+        RAMP_NUMBERS.forEach((rampNumber) => {
+          validatedStatus[rampNumber] = parsedStatus[rampNumber]
+            ? { ...createDefaultStatus(), ...parsedStatus[rampNumber] }
+            : createDefaultStatus()
+        })
+
+        setRampStatus(validatedStatus)
+
+        const savedTimestamp = localStorage.getItem("rampStatusLastUpdated_localOnly")
+        if (savedTimestamp) setLastLocalSave(new Date(savedTimestamp))
+      } else {
+        setRampStatus(initializeRampStatus())
+      }
+    } catch (error) {
+      console.error("Failed to load ramp status from localStorage", error)
+      setRampStatus(initializeRampStatus())
     }
   }, [])
 
-  // Handle ramp click - toggle between active and inactive with animations
+  useEffect(() => {
+    isMounted.current = true
+    setIsReady(true)
+    updateOrientation()
+
+    const handleResize = () => {
+      updateOrientation()
+      window.requestAnimationFrame(updateScale)
+    }
+
+    const resizeTimer = window.setTimeout(updateScale, 120)
+
+    window.addEventListener("resize", handleResize)
+    window.addEventListener("orientationchange", handleResize)
+
+    return () => {
+      isMounted.current = false
+      window.clearTimeout(resizeTimer)
+      window.removeEventListener("resize", handleResize)
+      window.removeEventListener("orientationchange", handleResize)
+    }
+  }, [updateOrientation, updateScale])
+
+  useEffect(() => {
+    window.requestAnimationFrame(updateScale)
+  }, [rampStatus, showUploader, filter, updateScale])
+
+  const dashboardStats = useMemo(() => {
+    const total = RAMP_NUMBERS.length
+    let occupied = 0
+    let defect = 0
+    let free = 0
+
+    RAMP_NUMBERS.forEach((rampNumber) => {
+      const state = getRampState(rampStatus[rampNumber])
+      if (state === "occupied") occupied += 1
+      if (state === "defect") defect += 1
+      if (state === "free") free += 1
+    })
+
+    return {
+      total,
+      occupied,
+      defect,
+      free,
+      utilization: total ? Math.round((occupied / total) * 100) : 0,
+    }
+  }, [rampStatus])
+
+  const visibleRampCards = useMemo(() => {
+    const search = rampSearch.trim().toLowerCase()
+
+    return RAMP_NUMBERS.map((rampNumber) => {
+      const status = rampStatus[rampNumber] || createDefaultStatus()
+      const state = getRampState(status)
+      return { rampNumber, status, state }
+    })
+      .filter(({ rampNumber, status, state }) => {
+        const matchesFilter = filter === "all" || filter === state
+        const searchableText = `${rampNumber} ${status.truckValue || ""} ${status.trailerValue || ""}`.toLowerCase()
+        const matchesSearch = search === "" || searchableText.includes(search)
+        return matchesFilter && matchesSearch
+      })
+      .sort((a, b) => {
+        const stateOrder = { occupied: 0, defect: 1, free: 2 }
+        return stateOrder[a.state] - stateOrder[b.state] || b.rampNumber - a.rampNumber
+      })
+  }, [filter, rampSearch, rampStatus])
+
+  const toggleUploader = useCallback(() => {
+    setShowUploader((previous) => !previous)
+  }, [])
+
   const handleRampClick = useCallback(
     (rampNumber: number) => {
       if (!isMounted.current) return
+      if (rampNumber < 20 || rampNumber > 60) return
 
-      // Validate ramp number
-      if (rampNumber < 20 || rampNumber > 60) {
-        console.warn(`Invalid ramp number: ${rampNumber}`)
-        return
-      }
+      setSelectedRamp(rampNumber)
 
-      setRampStatus((prev) => {
-        const currentStatus = prev[rampNumber] || createDefaultStatus()
+      setRampStatus((previous) => {
+        const currentStatus = previous[rampNumber] || createDefaultStatus()
 
-        // If we're deactivating, start the exit animation and clear input values
         if (currentStatus.active) {
-          const result = {
-            ...prev,
+          const exitingStatus = {
+            ...previous,
             [rampNumber]: {
               ...currentStatus,
               isExiting: true,
@@ -196,36 +245,25 @@ function WarehouseVisualizationContent() {
           }
 
           setTimeout(() => {
-            if (isMounted.current) {
-              setRampStatus((current) => {
-                const newStatus = {
-                  ...current,
-                  [rampNumber]: {
-                    ...current[rampNumber],
-                    active: false,
-                    red: false,
-                    yellow: false,
-                    hasTruck: false,
-                    isExiting: false,
-                    // Clear all input values when making ramp free (green)
-                    inputValue: "",
-                    truckValue: "",
-                    trailerValue: "",
-                  },
-                }
-                saveRampStatus(newStatus)
-                return newStatus
-              })
-            }
+            if (!isMounted.current) return
+            setRampStatus((current) => {
+              const nextStatus = {
+                ...current,
+                [rampNumber]: {
+                  ...createDefaultStatus(),
+                },
+              }
+              saveRampStatus(nextStatus)
+              return nextStatus
+            })
           }, TRUCK_EXIT_ANIMATION_DURATION)
 
-          saveRampStatus(result)
-          return result
+          saveRampStatus(exitingStatus)
+          return exitingStatus
         }
 
-        // If we're activating, first set active state without truck
-        const result = {
-          ...prev,
+        const nextStatus = {
+          ...previous,
           [rampNumber]: {
             ...currentStatus,
             active: true,
@@ -237,52 +275,43 @@ function WarehouseVisualizationContent() {
         }
 
         setTimeout(() => {
-          if (isMounted.current) {
-            setRampStatus((current) => {
-              const newStatus = {
-                ...current,
-                [rampNumber]: {
-                  ...current[rampNumber],
-                  hasTruck: true,
-                },
-              }
-              saveRampStatus(newStatus)
-              return newStatus
-            })
-          }
+          if (!isMounted.current) return
+          setRampStatus((current) => {
+            const statusWithTruck = {
+              ...current,
+              [rampNumber]: {
+                ...current[rampNumber],
+                hasTruck: true,
+              },
+            }
+            saveRampStatus(statusWithTruck)
+            return statusWithTruck
+          })
         }, 50)
 
-        saveRampStatus(result)
-        return result
+        saveRampStatus(nextStatus)
+        return nextStatus
       })
     },
     [saveRampStatus],
   )
 
-  // Handle input change with animations and validation
   const handleInputChange = useCallback(
     (rampNumber: number, value: string, inputType: "truck" | "trailer") => {
       if (!isMounted.current) return
+      if (rampNumber < 20 || rampNumber > 60) return
 
-      // Validate ramp number
-      if (rampNumber < 20 || rampNumber > 60) {
-        console.warn(`Invalid ramp number: ${rampNumber}`)
-        return
-      }
+      setSelectedRamp(rampNumber)
 
-      setRampStatus((prev) => {
-        const currentStatus = prev[rampNumber] || createDefaultStatus()
-
-        // Update the appropriate input value
+      setRampStatus((previous) => {
+        const currentStatus = previous[rampNumber] || createDefaultStatus()
         const updatedStatus = {
           ...currentStatus,
           [inputType === "truck" ? "truckValue" : "trailerValue"]: value,
         }
 
-        // Combine values for backward compatibility
         updatedStatus.inputValue = `${updatedStatus.truckValue || ""} ${updatedStatus.trailerValue || ""}`.trim()
 
-        // Check if the input indicates a defect
         const lowerTruckValue = updatedStatus.truckValue?.trim().toLowerCase() || ""
         const lowerTrailerValue = updatedStatus.trailerValue?.trim().toLowerCase() || ""
         const isYellow = lowerTruckValue === "defect" || lowerTrailerValue === "defect"
@@ -291,12 +320,10 @@ function WarehouseVisualizationContent() {
           (lowerTrailerValue !== "" && lowerTrailerValue !== "defect")
         const isActive = hasAnyInput || isYellow
 
-        // If both inputs are empty or only contain "defect" that's being removed, make ramp green (free)
         if (!isActive) {
-          // If we had a truck, start exit animation
           if (currentStatus.hasTruck) {
-            const result = {
-              ...prev,
+            const exitingStatus = {
+              ...previous,
               [rampNumber]: {
                 ...updatedStatus,
                 isExiting: true,
@@ -304,151 +331,105 @@ function WarehouseVisualizationContent() {
             }
 
             setTimeout(() => {
-              if (isMounted.current) {
-                setRampStatus((current) => {
-                  const newStatus = {
-                    ...current,
-                    [rampNumber]: {
-                      ...current[rampNumber],
-                      active: false,
-                      red: false,
-                      yellow: false,
-                      hasTruck: false,
-                      isExiting: false,
-                    },
-                  }
-                  saveRampStatus(newStatus)
-                  return newStatus
-                })
-              }
+              if (!isMounted.current) return
+              setRampStatus((current) => {
+                const nextStatus = {
+                  ...current,
+                  [rampNumber]: createDefaultStatus(),
+                }
+                saveRampStatus(nextStatus)
+                return nextStatus
+              })
             }, TRUCK_EXIT_ANIMATION_DURATION)
 
-            saveRampStatus(result)
-            return result
-          } else {
-            // No truck, just make it green immediately
-            const newStatus = {
-              ...prev,
-              [rampNumber]: {
-                ...updatedStatus,
-                active: false,
-                red: false,
-                yellow: false,
-                hasTruck: false,
-                isExiting: false,
-              },
-            }
-            saveRampStatus(newStatus)
-            return newStatus
+            saveRampStatus(exitingStatus)
+            return exitingStatus
           }
-        }
 
-        // If we're removing a truck (changing from active to inactive)
-        if (currentStatus.active && !isActive) {
-          const result = {
-            ...prev,
+          const nextStatus = {
+            ...previous,
             [rampNumber]: {
               ...updatedStatus,
-              isExiting: true,
+              active: false,
+              red: false,
+              yellow: false,
+              hasTruck: false,
+              isExiting: false,
             },
           }
-
-          setTimeout(() => {
-            if (isMounted.current) {
-              setRampStatus((current) => {
-                const newStatus = {
-                  ...current,
-                  [rampNumber]: {
-                    ...current[rampNumber],
-                    active: isActive,
-                    red: hasAnyInput,
-                    yellow: isYellow,
-                    hasTruck: false,
-                    isExiting: false,
-                  },
-                }
-                saveRampStatus(newStatus)
-                return newStatus
-              })
-            }
-          }, TRUCK_EXIT_ANIMATION_DURATION)
-
-          saveRampStatus(result)
-          return result
+          saveRampStatus(nextStatus)
+          return nextStatus
         }
 
-        // If we're changing to defect, remove truck with animation
         if (isYellow && currentStatus.hasTruck && !currentStatus.yellow) {
-          const result = {
-            ...prev,
+          const defectExitingStatus = {
+            ...previous,
             [rampNumber]: {
               ...updatedStatus,
-              yellow: isYellow,
+              yellow: true,
+              red: false,
+              active: true,
               isExiting: true,
             },
           }
 
           setTimeout(() => {
-            if (isMounted.current) {
-              setRampStatus((current) => {
-                const newStatus = {
-                  ...current,
-                  [rampNumber]: {
-                    ...current[rampNumber],
-                    active: isActive,
-                    red: false,
-                    yellow: isYellow,
-                    hasTruck: false,
-                    isExiting: false,
-                  },
-                }
-                saveRampStatus(newStatus)
-                return newStatus
-              })
-            }
+            if (!isMounted.current) return
+            setRampStatus((current) => {
+              const nextStatus = {
+                ...current,
+                [rampNumber]: {
+                  ...current[rampNumber],
+                  active: true,
+                  red: false,
+                  yellow: true,
+                  hasTruck: false,
+                  isExiting: false,
+                },
+              }
+              saveRampStatus(nextStatus)
+              return nextStatus
+            })
           }, TRUCK_EXIT_ANIMATION_DURATION)
 
-          saveRampStatus(result)
-          return result
+          saveRampStatus(defectExitingStatus)
+          return defectExitingStatus
         }
 
-        // If we're adding a truck (changing from inactive to active)
         if (!currentStatus.active && isActive && hasAnyInput) {
-          const result = {
-            ...prev,
+          const enteringStatus = {
+            ...previous,
             [rampNumber]: {
               ...updatedStatus,
-              active: isActive,
-              red: hasAnyInput,
-              yellow: isYellow,
+              active: true,
+              red: true,
+              yellow: false,
               hasTruck: false,
               isExiting: false,
             },
           }
 
           setTimeout(() => {
-            if (isMounted.current) {
-              setRampStatus((current) => {
-                const newStatus = {
-                  ...current,
-                  [rampNumber]: {
-                    ...current[rampNumber],
-                    hasTruck: hasAnyInput,
-                  },
-                }
-                saveRampStatus(newStatus)
-                return newStatus
-              })
-            }
+            if (!isMounted.current) return
+            setRampStatus((current) => {
+              const nextStatus = {
+                ...current,
+                [rampNumber]: {
+                  ...current[rampNumber],
+                  hasTruck: true,
+                },
+              }
+              saveRampStatus(nextStatus)
+              return nextStatus
+            })
           }, 50)
 
-          saveRampStatus(result)
-          return result
+          saveRampStatus(enteringStatus)
+          return enteringStatus
         }
 
-        // For all other cases (no animation needed)
-        const newStatus = {
-          ...prev,
+        const nextStatus = {
+          ...previous,
           [rampNumber]: {
             ...updatedStatus,
             active: isActive,
@@ -458,84 +439,282 @@ function WarehouseVisualizationContent() {
             isExiting: false,
           },
         }
-        saveRampStatus(newStatus)
-        return newStatus
+
+        saveRampStatus(nextStatus)
+        return nextStatus
       })
     },
     [saveRampStatus],
   )
 
-  // Toggle uploader visibility
-  const toggleUploader = useCallback(() => {
-    setShowUploader((prev) => !prev)
+  const handleSelectRamp = useCallback((rampNumber: number) => {
+    setSelectedRamp(rampNumber)
+    setRampSearch(String(rampNumber))
   }, [])
 
-  // Don't render until we're ready
+  const handleClearRamp = useCallback(
+    (rampNumber: number) => {
+      setRampStatus((previous) => {
+        const nextStatus = {
+          ...previous,
+          [rampNumber]: createDefaultStatus(),
+        }
+        saveRampStatus(nextStatus)
+        return nextStatus
+      })
+      if (selectedRamp === rampNumber) setSelectedRamp(null)
+    },
+    [saveRampStatus, selectedRamp],
+  )
+
+  const handleMarkDefect = useCallback(
+    (rampNumber: number) => {
+      setSelectedRamp(rampNumber)
+      setRampStatus((previous) => {
+        const nextStatus = {
+          ...previous,
+          [rampNumber]: {
+            ...createDefaultStatus(),
+            active: true,
+            yellow: true,
+            inputValue: "defect",
+            truckValue: "defect",
+            trailerValue: "",
+          },
+        }
+        saveRampStatus(nextStatus)
+        return nextStatus
+      })
+    },
+    [saveRampStatus],
+  )
+
+  const handleClearAll = useCallback(() => {
+    const confirmed = window.confirm("Clear all ramp statuses and local truck/trailer values?")
+    if (!confirmed) return
+
+    const nextStatus = initializeRampStatus()
+    setRampStatus(nextStatus)
+    setSelectedRamp(null)
+    setRampSearch("")
+    saveRampStatus(nextStatus)
+  }, [saveRampStatus])
+
+  const handleExportCsv = useCallback(() => {
+    const rows = [
+      ["Ramp", "Status", "Truck", "Trailer"],
+      ...RAMP_NUMBERS.map((rampNumber) => {
+        const status = rampStatus[rampNumber] || createDefaultStatus()
+        return [
+          String(rampNumber),
+          getRampStateLabel(status),
+          status.truckValue || "",
+          status.trailerValue || "",
+        ]
+      }),
+    ]
+
+    const csv = rows
+      .map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(","))
+      .join("\n")
+
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.href = url
+    link.download = `warehouse-ramp-status-${new Date().toISOString().slice(0, 10)}.csv`
+    link.click()
+    URL.revokeObjectURL(url)
+  }, [rampStatus])
+
   if (!isReady) {
-    return <div className="flex items-center justify-center min-h-screen">Loading...</div>
+    return (
+      <div className="warehouse-loading">
+        <div className="warehouse-spinner" />
+        <p>Loading ramp board...</p>
+      </div>
+    )
   }
 
-  // Show loading state while initializing HTML DB sync
   if (isInitializing) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center p-6 bg-white rounded-lg shadow-lg max-w-md">
-          <h2 className="text-xl font-bold mb-4">Initializing HTML Database Sync...</h2>
-          <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-sm text-gray-600">Setting up truck-trailer lookup sync...</p>
-          <p className="text-xs text-gray-500 mt-2">Ramp controls are local only</p>
-        </div>
+      <div className="warehouse-loading">
+        <div className="warehouse-spinner" />
+        <h2>Initializing data connection</h2>
+        <p>Preparing the warehouse ramp board...</p>
       </div>
     )
   }
 
   return (
-    <div id="app" className={`app-container ${orientation}`}>
-      {/* HTML Upload Button */}
-      <div className="flex justify-between mb-2">
-        <div className="flex items-center space-x-2">
-          <span className="text-xs text-gray-600">
-            {isSupabaseAvailable ? "🟢 HTML DB Sync Active" : "🔴 HTML DB Local Only"}
-          </span>
-          <span className="text-xs text-gray-500">• Ramp Status: Local Only</span>
+    <div id="app" className={`warehouse-app ${orientation}`}>
+      <header className="warehouse-topbar">
+        <div className="warehouse-title-block">
+          <div className="warehouse-logo">WR</div>
+          <div>
+            <h1>Warehouse Ramp Status</h1>
+            <p>Live view for ramp occupation, defects, trucks and trailers</p>
+          </div>
         </div>
-        <button className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm" onClick={toggleUploader}>
-          {showUploader ? "Hide Database Tools" : "Show Database Tools"}
-        </button>
-      </div>
 
-      {/* Database Tools */}
-      {showUploader && <HtmlUploader />}
-
-      <div className="warehouse-container" ref={containerRef}>
-        <div
-          id="warehouse-svg"
-          style={{
-            transform: `scale(${scale})`,
-            transformOrigin: orientation === "portrait" ? "top center" : "center center",
-          }}
-        >
-          <WarehouseLayout
-            rampStatus={rampStatus}
-            onRampClick={handleRampClick}
-            onInputChange={handleInputChange}
-            orientation={orientation}
-          />
+        <div className="warehouse-topbar-actions">
+          <div className={`sync-pill ${isSupabaseAvailable && connectionStatus === "connected" ? "online" : "offline"}`}>
+            <span />
+            {isSupabaseAvailable && connectionStatus === "connected" ? "Lookup DB online" : "Local mode"}
+          </div>
+          <button className="control-button ghost" onClick={toggleUploader}>
+            {showUploader ? "Hide tools" : "Database tools"}
+          </button>
+          <button className="control-button ghost" onClick={handleExportCsv}>
+            Export CSV
+          </button>
+          <button className="control-button danger" onClick={handleClearAll}>
+            Clear all
+          </button>
         </div>
-      </div>
+      </header>
+
+      {showUploader ? (
+        <section className="database-tools-panel">
+          <HtmlUploader />
+        </section>
+      ) : null}
+
+      <section className="kpi-grid">
+        <StatCard label="Free ramps" value={dashboardStats.free} tone="free" />
+        <StatCard label="Occupied" value={dashboardStats.occupied} tone="occupied" />
+        <StatCard label="Defect" value={dashboardStats.defect} tone="defect" />
+        <StatCard label="Utilization" value={`${dashboardStats.utilization}%`} tone="neutral" />
+      </section>
+
+      <section className="warehouse-workspace">
+        <div className="hall-card">
+          <div className="hall-toolbar">
+            <div>
+              <h2>Hala rampe</h2>
+              <p>
+                {dashboardStats.total} ramps • saved locally
+                {lastLocalSave ? ` at ${lastLocalSave.toLocaleTimeString()}` : ""}
+              </p>
+            </div>
+
+            <div className="hall-toolbar-controls">
+              <input
+                value={rampSearch}
+                onChange={(event) => setRampSearch(event.target.value)}
+                className="ramp-search"
+                placeholder="Search ramp / truck / trailer"
+                inputMode="search"
+              />
+
+              <div className="filter-tabs" aria-label="Ramp status filters">
+                {(["all", "occupied", "free", "defect"] as RampFilter[]).map((option) => (
+                  <button
+                    key={option}
+                    className={filter === option ? "active" : ""}
+                    onClick={() => setFilter(option)}
+                    type="button"
+                  >
+                    {option}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="warehouse-container" ref={containerRef}>
+            <div
+              id="warehouse-svg"
+              style={{
+                transform: `scale(${scale})`,
+                transformOrigin: orientation === "portrait" ? "top center" : "center center",
+              }}
+            >
+              <WarehouseLayout
+                rampStatus={rampStatus}
+                onRampClick={handleRampClick}
+                onInputChange={handleInputChange}
+                orientation={orientation}
+                selectedRamp={selectedRamp}
+              />
+            </div>
+          </div>
+        </div>
+
+        <aside className="ramp-status-panel">
+          <div className="panel-header">
+            <div>
+              <h2>Ramp board</h2>
+              <p>{visibleRampCards.length} visible ramps</p>
+            </div>
+            <button className="control-button ghost small" onClick={() => {
+              setRampSearch("")
+              setFilter("all")
+              setSelectedRamp(null)
+            }}>
+              Reset view
+            </button>
+          </div>
+
+          <div className="selected-ramp-card">
+            <span>Selected ramp</span>
+            <strong>{selectedRamp ?? "None"}</strong>
+          </div>
+
+          <div className="ramp-card-list">
+            {visibleRampCards.map(({ rampNumber, status, state }) => (
+              <div
+                key={rampNumber}
+                className={`ramp-card ${state} ${selectedRamp === rampNumber ? "selected" : ""}`}
+              >
+                <button
+                  type="button"
+                  className="ramp-card-main"
+                  onClick={() => handleSelectRamp(rampNumber)}
+                >
+                  <span className="ramp-card-number">{rampNumber}</span>
+                  <span className="ramp-card-details">
+                    <strong>{getRampStateLabel(status)}</strong>
+                    <small>
+                      {status.truckValue || "No truck"} {status.trailerValue ? `• ${status.trailerValue}` : ""}
+                    </small>
+                  </span>
+                </button>
+
+                <div className="ramp-card-actions">
+                  <button type="button" onClick={() => handleMarkDefect(rampNumber)}>
+                    Defect
+                  </button>
+                  <button type="button" onClick={() => handleClearRamp(rampNumber)}>
+                    Clear
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </aside>
+      </section>
+
       <Legend />
     </div>
   )
 }
 
-function WarehouseVisualization() {
+function StatCard({
+  label,
+  value,
+  tone,
+}: {
+  label: string
+  value: string | number
+  tone: "free" | "occupied" | "defect" | "neutral"
+}) {
   return (
-    <SupabaseSyncProvider>
-      <LookupProvider>
-        <WarehouseVisualizationContent />
-      </LookupProvider>
-    </SupabaseSyncProvider>
+    <div className={`stat-card ${tone}`}>
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
   )
 }
 
-export default memo(WarehouseVisualization)
+export default memo(WarehouseVisualizationContent)

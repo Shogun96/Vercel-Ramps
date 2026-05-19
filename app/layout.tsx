@@ -1,10 +1,20 @@
 import type React from "react"
-import type { Metadata } from "next"
+import type { Metadata, Viewport } from "next"
 import "./globals.css"
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover",
+  themeColor: "#0f172a",
+}
+
 export const metadata: Metadata = {
-  title: "Warehouse Ramps Visualization",
-  description: "Interactive visualization system for warehouse ramps",
+  title: "Warehouse Ramp Status",
+  description: "Professional status board for warehouse loading ramps",
+  applicationName: "Warehouse Ramps",
   icons: {
     icon: [{ url: "/warehouse-icon.png" }],
     apple: [{ url: "/warehouse-icon.png" }],
@@ -16,7 +26,6 @@ export const metadata: Metadata = {
     statusBarStyle: "default",
   },
   manifest: "/manifest.json",
-    generator: 'v0.app'
 }
 
 export default function RootLayout({
