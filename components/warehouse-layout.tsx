@@ -1,16 +1,16 @@
 "use client"
 
 import { memo } from "react"
+import type { RampStatus, RampState } from "./warehouse-visualization"
 
-interface RampStatus {
-  active: boolean
-  red: boolean
-  yellow: boolean
-  inputValue: string
-  truckValue: string
-  trailerValue: string
-  hasTruck: boolean
-  isExiting?: boolean
+type RampFilter = "all" | RampState
+
+interface WarehouseStats {
+  total: number
+  occupied: number
+  defect: number
+  free: number
+  utilization: number
 }
 
 interface WarehouseLayoutProps {
@@ -19,6 +19,12 @@ interface WarehouseLayoutProps {
   leftRamps: number[]
   rightRamps: number[]
   bottomRamps: number[]
+  stats: WarehouseStats
+  searchQuery: string
+  filter: RampFilter
+  onSearchChange: (value: string) => void
+  onFilterChange: (value: RampFilter) => void
+  onResetView: () => void
   onRampClick: (rampNumber: number) => void
   onSelectRamp: (rampNumber: number) => void
   onInputChange: (rampNumber: number, value: string, inputType: "truck" | "trailer") => void
@@ -32,13 +38,6 @@ const getRampTone = (status?: RampStatus) => {
   if (status.yellow) return "defect"
   if (status.active || status.red || status.truckValue || status.trailerValue) return "occupied"
   return "free"
-}
-
-const getRampLabel = (status?: RampStatus) => {
-  const tone = getRampTone(status)
-  if (tone === "occupied") return "Occupied"
-  if (tone === "defect") return "Defect"
-  return "Free"
 }
 
 function RampCard({
@@ -74,22 +73,18 @@ function RampCard({
       onClick={() => onSelectRamp(rampNumber)}
     >
       <div className="warehouse-ramp-content">
-        <div className="warehouse-ramp-left">
-          <span className="warehouse-ramp-status">{getRampLabel(status)}</span>
-
-          <button
-            type="button"
-            className="warehouse-ramp-number"
-            onClick={(event) => {
-              event.stopPropagation()
-              onRampClick(rampNumber)
-            }}
-            aria-label={`Toggle ramp ${rampNumber}`}
-            title={`Toggle ramp ${rampNumber}`}
-          >
-            {rampNumber}
-          </button>
-        </div>
+        <button
+          type="button"
+          className="warehouse-ramp-number"
+          onClick={(event) => {
+            event.stopPropagation()
+            onRampClick(rampNumber)
+          }}
+          aria-label={`Toggle ramp ${rampNumber}`}
+          title={`Toggle ramp ${rampNumber}`}
+        >
+          {rampNumber}
+        </button>
 
         <div className="warehouse-ramp-inputs" onClick={(event) => event.stopPropagation()}>
           <input
@@ -146,6 +141,12 @@ function WarehouseLayout({
   leftRamps,
   rightRamps,
   bottomRamps,
+  stats,
+  searchQuery,
+  filter,
+  onSearchChange,
+  onFilterChange,
+  onResetView,
   onRampClick,
   onSelectRamp,
   onInputChange,
@@ -153,6 +154,8 @@ function WarehouseLayout({
   onClearRamp,
   isRampMatchingFocus,
 }: WarehouseLayoutProps) {
+  const filters: RampFilter[] = ["all", "occupied", "free", "defect"]
+
   return (
     <section className="warehouse-layout-shell">
       <div className="warehouse-layout-board">
@@ -176,9 +179,57 @@ function WarehouseLayout({
         <div className="warehouse-layout-center">
           <div className="warehouse-layout-yard">
             <div className="warehouse-layout-watermark">WAREHOUSE</div>
-            <div className="warehouse-layout-zone-label top-left">Ramps 60 → 44</div>
-            <div className="warehouse-layout-zone-label top-right">Ramps 20 → 35</div>
-            <div className="warehouse-layout-zone-label bottom-center">Bottom docks 43 → 36</div>
+
+            <div className="warehouse-stats-stack" aria-label="Warehouse statistics">
+              <div className="warehouse-stat-line free">
+                <span>Free ramps</span>
+                <strong>{stats.free}</strong>
+              </div>
+              <div className="warehouse-stat-line occupied">
+                <span>Occupied</span>
+                <strong>{stats.occupied}</strong>
+              </div>
+              <div className="warehouse-stat-line defect">
+                <span>Defect</span>
+                <strong>{stats.defect}</strong>
+              </div>
+              <div className="warehouse-stat-line utilization">
+                <span>Utilization</span>
+                <strong>{stats.utilization}%</strong>
+              </div>
+            </div>
+
+            <div className="warehouse-view-panel" aria-label="Warehouse view controls">
+              <div className="warehouse-view-row">
+                <input
+                  value={searchQuery}
+                  onChange={(event) => onSearchChange(event.target.value)}
+                  className="ramp-search"
+                  placeholder="Search"
+                  inputMode="search"
+                />
+                <button type="button" className="reset-view-button" onClick={onResetView}>
+                  Reset
+                </button>
+              </div>
+
+              <div className="filter-stack">
+                {filters.map((option) => (
+                  <button
+                    key={option}
+                    className={filter === option ? "active" : ""}
+                    onClick={() => onFilterChange(option)}
+                    type="button"
+                  >
+                    {option}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="warehouse-zone-label top-left">60 → 44</div>
+            <div className="warehouse-zone-label top-right">20 → 35</div>
+            <div className="warehouse-zone-label bottom-center">43 → 36</div>
           </div>
 
           <div className="warehouse-layout-bottom" aria-label="Bottom ramps">

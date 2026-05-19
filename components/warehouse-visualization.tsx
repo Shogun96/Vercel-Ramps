@@ -17,7 +17,7 @@ export interface RampStatus {
   isExiting?: boolean
 }
 
-type RampState = "occupied" | "free" | "defect"
+export type RampState = "occupied" | "free" | "defect"
 type RampFilter = "all" | RampState
 
 const RAMP_NUMBERS = Array.from({ length: 41 }, (_, index) => index + 20)
@@ -62,7 +62,7 @@ function WarehouseVisualizationContent() {
   const isMounted = useRef(false)
   const initialLoadDone = useRef(false)
 
-  const { syncRampStatus, isInitializing, isSupabaseAvailable, connectionStatus } = useSupabaseSync()
+  const { syncRampStatus, isSupabaseAvailable, connectionStatus } = useSupabaseSync()
 
   const [rampStatus, setRampStatus] = useState<Record<number, RampStatus>>(initializeRampStatus())
   const [selectedRamp, setSelectedRamp] = useState<number | null>(null)
@@ -164,8 +164,10 @@ function WarehouseVisualizationContent() {
     return RAMP_NUMBERS.filter((rampNumber) => isRampMatchingFocus(rampNumber)).length
   }, [isRampMatchingFocus])
 
-  const toggleUploader = useCallback(() => {
-    setShowUploader((previous) => !previous)
+  const handleResetView = useCallback(() => {
+    setRampSearch("")
+    setFilter("all")
+    setSelectedRamp(null)
   }, [])
 
   const handleSelectRamp = useCallback((rampNumber: number) => {
@@ -309,6 +311,7 @@ function WarehouseVisualizationContent() {
     setRampStatus(nextStatus)
     setSelectedRamp(null)
     setRampSearch("")
+    setFilter("all")
     saveRampStatus(nextStatus)
   }, [saveRampStatus])
 
@@ -346,115 +349,27 @@ function WarehouseVisualizationContent() {
           <div className="warehouse-board-logo">WR</div>
           <div>
             <h1>Warehouse Ramp Status</h1>
-            <p>Interactive ramp board shaped like the warehouse</p>
+            <p>{visibleFocusCount} focused ramps {lastLocalSave ? `• saved at ${lastLocalSave.toLocaleTimeString()}` : ""}</p>
           </div>
         </div>
 
-        <div className="warehouse-board-actions">
-          <div
-            className={`sync-pill ${
-              isSupabaseAvailable && connectionStatus === "connected"
-                ? "online"
-                : connectionStatus === "connecting"
-                  ? "connecting"
-                  : "offline"
-            }`}
-          >
-            <span />
-            {isSupabaseAvailable && connectionStatus === "connected"
-              ? "Lookup DB online"
+        <div
+          className={`sync-pill ${
+            isSupabaseAvailable && connectionStatus === "connected"
+              ? "online"
               : connectionStatus === "connecting"
-                ? "Starting fast..."
-                : "Local mode"}
-          </div>
-
-          <button className="control-button ghost" onClick={toggleUploader}>
-            {showUploader ? "Hide tools" : "Database tools"}
-          </button>
-          <button className="control-button ghost" onClick={handleExportCsv}>
-            Export CSV
-          </button>
-          <button className="control-button danger" onClick={handleClearAll}>
-            Clear all
-          </button>
+                ? "connecting"
+                : "offline"
+          }`}
+        >
+          <span />
+          {isSupabaseAvailable && connectionStatus === "connected"
+            ? "Lookup DB online"
+            : connectionStatus === "connecting"
+              ? "Starting fast..."
+              : "Local mode"}
         </div>
       </header>
-
-      {showUploader ? (
-        <section className="database-tools-panel">
-          <HtmlUploader />
-        </section>
-      ) : null}
-
-      <section className="warehouse-kpi-grid">
-        <div className="warehouse-kpi-card free">
-          <span>Free ramps</span>
-          <strong>{dashboardStats.free}</strong>
-        </div>
-        <div className="warehouse-kpi-card occupied">
-          <span>Occupied</span>
-          <strong>{dashboardStats.occupied}</strong>
-        </div>
-        <div className="warehouse-kpi-card defect">
-          <span>Defect</span>
-          <strong>{dashboardStats.defect}</strong>
-        </div>
-        <div className="warehouse-kpi-card neutral">
-          <span>Utilization</span>
-          <strong>{dashboardStats.utilization}%</strong>
-        </div>
-      </section>
-
-      <section className="warehouse-board-toolbar">
-        <div className="warehouse-board-toolbar-left">
-          <div>
-            <h2>Warehouse layout</h2>
-            <p>
-              {visibleFocusCount} focused ramps • {dashboardStats.total} total
-              {lastLocalSave ? ` • saved at ${lastLocalSave.toLocaleTimeString()}` : ""}
-            </p>
-          </div>
-
-          <div className="selected-ramp-chip">
-            <span>Selected ramp</span>
-            <strong>{selectedRamp ?? "None"}</strong>
-          </div>
-        </div>
-
-        <div className="warehouse-board-toolbar-right">
-          <input
-            value={rampSearch}
-            onChange={(event) => setRampSearch(event.target.value)}
-            className="ramp-search"
-            placeholder="Search ramp / truck / trailer"
-            inputMode="search"
-          />
-
-          <div className="filter-tabs" aria-label="Ramp status filters">
-            {(["all", "occupied", "free", "defect"] as RampFilter[]).map((option) => (
-              <button
-                key={option}
-                className={filter === option ? "active" : ""}
-                onClick={() => setFilter(option)}
-                type="button"
-              >
-                {option}
-              </button>
-            ))}
-          </div>
-
-          <button
-            className="control-button ghost small"
-            onClick={() => {
-              setRampSearch("")
-              setFilter("all")
-              setSelectedRamp(null)
-            }}
-          >
-            Reset view
-          </button>
-        </div>
-      </section>
 
       <WarehouseLayout
         rampStatus={rampStatus}
@@ -462,6 +377,12 @@ function WarehouseVisualizationContent() {
         leftRamps={LEFT_RAMPS}
         rightRamps={RIGHT_RAMPS}
         bottomRamps={BOTTOM_RAMPS}
+        stats={dashboardStats}
+        searchQuery={rampSearch}
+        filter={filter}
+        onSearchChange={setRampSearch}
+        onFilterChange={setFilter}
+        onResetView={handleResetView}
         onRampClick={handleRampClick}
         onSelectRamp={handleSelectRamp}
         onInputChange={handleInputChange}
@@ -471,6 +392,44 @@ function WarehouseVisualizationContent() {
       />
 
       <Legend />
+
+      <div className="tools-dock">
+        <button type="button" className="tools-main" aria-label="Tools">
+          Tools
+        </button>
+
+        <div className="tools-bubbles">
+          <button type="button" onClick={() => setShowUploader(true)}>
+            DB
+          </button>
+          <button type="button" onClick={handleExportCsv}>
+            CSV
+          </button>
+          <button type="button" className="danger" onClick={handleClearAll}>
+            Clear
+          </button>
+        </div>
+      </div>
+
+      {showUploader ? (
+        <div className="database-popout" role="dialog" aria-modal="true" aria-label="Database tools">
+          <div className="database-popout-backdrop" onClick={() => setShowUploader(false)} />
+          <div className="database-popout-panel">
+            <div className="database-popout-header">
+              <div>
+                <h2>Database tools</h2>
+                <p>Lookup upload and database utilities</p>
+              </div>
+              <button type="button" onClick={() => setShowUploader(false)} aria-label="Close database tools">
+                ×
+              </button>
+            </div>
+            <div className="database-popout-content">
+              <HtmlUploader />
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }
