@@ -908,3 +908,318 @@ body {
     height: 72rem !important;
   }
 }
+
+
+/* -------------------------------------------------------------------------- */
+/* Final fit-to-screen warehouse alignment                                    */
+/* -------------------------------------------------------------------------- */
+/* Goal:
+   - no vertical page scroll on normal desktop/tablet landscape
+   - cards stay readable; they do not collapse to tiny unreadable blocks
+   - bottom ramp 43 starts lower, aligned after the end of left/right ramp rows
+*/
+
+html,
+body {
+  height: 100%;
+  overflow: hidden !important;
+}
+
+.warehouse-board-app {
+  --app-gap: clamp(0.35rem, 0.7vh, 0.55rem);
+  --side-column-width: clamp(11.25rem, 14.5vw, 15rem);
+  --bottom-row-height: clamp(5.6rem, 10.5vh, 6.8rem);
+  --layout-gap: clamp(0.35rem, 0.65vw, 0.55rem);
+
+  height: 100dvh !important;
+  min-height: 100dvh !important;
+  overflow: hidden !important;
+  display: grid !important;
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto !important;
+  gap: var(--app-gap) !important;
+}
+
+.warehouse-board-header,
+.warehouse-board-toolbar,
+.legend {
+  flex-shrink: 0 !important;
+}
+
+.warehouse-board-header {
+  padding: clamp(0.45rem, 0.8vh, 0.65rem) clamp(0.55rem, 1vw, 0.85rem) !important;
+}
+
+.warehouse-board-title h1 {
+  font-size: clamp(0.98rem, 1.25vw, 1.28rem) !important;
+}
+
+.warehouse-board-title p {
+  display: none !important;
+}
+
+.warehouse-board-logo {
+  width: clamp(2rem, 3.6vh, 2.35rem) !important;
+  height: clamp(2rem, 3.6vh, 2.35rem) !important;
+  border-radius: 0.7rem !important;
+}
+
+.warehouse-board-actions {
+  gap: 0.35rem !important;
+}
+
+.sync-pill,
+.control-button {
+  padding: clamp(0.38rem, 0.7vh, 0.5rem) clamp(0.52rem, 0.8vw, 0.7rem) !important;
+  font-size: clamp(0.65rem, 0.8vw, 0.75rem) !important;
+}
+
+.warehouse-kpi-grid {
+  gap: 0.45rem !important;
+}
+
+.warehouse-kpi-card {
+  padding: clamp(0.42rem, 0.75vh, 0.62rem) 0.7rem !important;
+  border-radius: 0.8rem !important;
+}
+
+.warehouse-kpi-card span {
+  font-size: clamp(0.58rem, 0.72vw, 0.68rem) !important;
+}
+
+.warehouse-kpi-card strong {
+  font-size: clamp(1.1rem, 1.6vw, 1.55rem) !important;
+}
+
+.warehouse-board-toolbar {
+  padding: clamp(0.45rem, 0.75vh, 0.62rem) 0.75rem !important;
+}
+
+.warehouse-board-toolbar-left h2 {
+  font-size: clamp(0.88rem, 1vw, 1rem) !important;
+}
+
+.warehouse-board-toolbar-left p {
+  display: none !important;
+}
+
+.selected-ramp-chip {
+  min-width: 8rem !important;
+  padding: 0.42rem 0.6rem !important;
+  border-radius: 0.72rem !important;
+}
+
+.selected-ramp-chip span {
+  font-size: 0.68rem !important;
+}
+
+.selected-ramp-chip strong {
+  font-size: 0.95rem !important;
+}
+
+.ramp-search {
+  height: 2.1rem !important;
+  width: clamp(13rem, 18vw, 18rem) !important;
+  padding: 0.38rem 0.62rem !important;
+}
+
+.filter-tabs button {
+  padding: 0.32rem 0.52rem !important;
+  font-size: 0.66rem !important;
+}
+
+.warehouse-layout-shell {
+  height: 100% !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  padding: clamp(0.35rem, 0.65vh, 0.55rem) !important;
+  border-radius: 0.9rem !important;
+}
+
+.warehouse-layout-board {
+  width: 100% !important;
+  height: 100% !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  display: grid !important;
+  grid-template-columns: var(--side-column-width) minmax(0, 1fr) var(--side-column-width) !important;
+  gap: var(--layout-gap) !important;
+  align-items: start !important;
+}
+
+.warehouse-layout-left,
+.warehouse-layout-right {
+  height: calc(100% - var(--bottom-row-height) - var(--layout-gap)) !important;
+  min-height: 0 !important;
+  display: grid !important;
+  gap: clamp(0.18rem, 0.35vh, 0.32rem) !important;
+}
+
+.warehouse-layout-left {
+  grid-template-rows: repeat(17, minmax(2.85rem, 1fr)) !important;
+}
+
+.warehouse-layout-right {
+  grid-template-rows: repeat(16, minmax(2.85rem, 1fr)) !important;
+}
+
+.warehouse-layout-center {
+  height: 100% !important;
+  min-height: 0 !important;
+  display: grid !important;
+  grid-template-rows: calc(100% - var(--bottom-row-height) - var(--layout-gap)) var(--bottom-row-height) !important;
+  gap: var(--layout-gap) !important;
+}
+
+.warehouse-layout-yard {
+  height: 100% !important;
+  min-height: 0 !important;
+  border-radius: 0.9rem !important;
+}
+
+/* This makes ramp 43 start lower than side ramps.
+   Its top line begins after the side columns end. */
+.warehouse-layout-bottom {
+  height: var(--bottom-row-height) !important;
+  min-height: var(--bottom-row-height) !important;
+  display: grid !important;
+  grid-template-columns: repeat(8, minmax(0, 1fr)) !important;
+  gap: clamp(0.22rem, 0.38vw, 0.4rem) !important;
+  align-items: stretch !important;
+}
+
+.warehouse-ramp-card {
+  min-height: 0 !important;
+  border-radius: 0.68rem !important;
+}
+
+.warehouse-ramp-main {
+  display: grid !important;
+  grid-template-columns: clamp(2.15rem, 3vw, 2.55rem) minmax(0, 1fr) !important;
+  gap: clamp(0.28rem, 0.45vw, 0.42rem) !important;
+  align-items: center !important;
+  padding: clamp(0.26rem, 0.42vh, 0.38rem) !important;
+}
+
+.warehouse-ramp-number {
+  width: clamp(2.15rem, 3vw, 2.55rem) !important;
+  min-width: clamp(2.15rem, 3vw, 2.55rem) !important;
+  height: clamp(1.75rem, 3.2vh, 2.05rem) !important;
+  border-radius: 0.55rem !important;
+  font-size: clamp(0.72rem, 0.95vw, 0.88rem) !important;
+}
+
+.warehouse-ramp-topline {
+  margin-bottom: clamp(0.12rem, 0.25vh, 0.22rem) !important;
+}
+
+.warehouse-ramp-topline strong {
+  font-size: clamp(0.62rem, 0.75vw, 0.72rem) !important;
+}
+
+.warehouse-ramp-input-grid {
+  gap: 0.22rem !important;
+}
+
+.warehouse-ramp-input {
+  height: clamp(1.45rem, 2.5vh, 1.72rem) !important;
+  min-height: clamp(1.45rem, 2.5vh, 1.72rem) !important;
+  padding: 0.22rem 0.36rem !important;
+  border-radius: 0.46rem !important;
+  font-size: 16px !important;
+  line-height: 1 !important;
+}
+
+/* Bottom cards remain readable: number left, Truck/Trailer fields to the right. */
+.warehouse-ramp-card.compact .warehouse-ramp-main {
+  grid-template-columns: clamp(2rem, 2.7vw, 2.35rem) minmax(0, 1fr) !important;
+  padding: clamp(0.22rem, 0.4vh, 0.34rem) !important;
+}
+
+.warehouse-ramp-card.compact .warehouse-ramp-input-grid {
+  grid-template-columns: 1fr !important;
+  gap: 0.2rem !important;
+}
+
+.warehouse-ramp-card.compact .warehouse-ramp-actions button,
+.warehouse-ramp-actions button {
+  padding: clamp(0.18rem, 0.35vh, 0.3rem) 0.25rem !important;
+  font-size: clamp(0.52rem, 0.7vw, 0.62rem) !important;
+}
+
+.legend {
+  padding: clamp(0.35rem, 0.55vh, 0.48rem) 0.7rem !important;
+  gap: clamp(0.55rem, 1vw, 0.9rem) !important;
+}
+
+.legend-item {
+  font-size: clamp(0.62rem, 0.75vw, 0.72rem) !important;
+}
+
+.legend-color {
+  width: 0.72rem !important;
+  height: 0.72rem !important;
+}
+
+/* On smaller screens keep it usable with internal horizontal scroll instead of making cards unreadable. */
+@media (max-width: 1180px) {
+  html,
+  body {
+    overflow: auto !important;
+  }
+
+  .warehouse-board-app {
+    height: auto !important;
+    min-height: 100dvh !important;
+    overflow: visible !important;
+    grid-template-rows: auto auto auto auto auto !important;
+  }
+
+  .warehouse-layout-shell {
+    overflow: auto !important;
+    height: auto !important;
+  }
+
+  .warehouse-layout-board {
+    min-width: 68rem !important;
+    height: 74rem !important;
+  }
+
+  .warehouse-layout-left,
+  .warehouse-layout-right {
+    height: calc(100% - var(--bottom-row-height) - var(--layout-gap)) !important;
+  }
+}
+
+@media (max-width: 820px) {
+  .warehouse-kpi-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+
+  .warehouse-kpi-card span {
+    display: none !important;
+  }
+
+  .warehouse-board-header,
+  .warehouse-board-toolbar {
+    gap: 0.45rem !important;
+  }
+
+  .warehouse-board-toolbar-right {
+    align-items: stretch !important;
+  }
+
+  .ramp-search {
+    width: 100% !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .warehouse-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .warehouse-layout-board {
+    min-width: 60rem !important;
+    height: 72rem !important;
+  }
+}
