@@ -1,9 +1,12 @@
 "use client"
 
-import { memo, useCallback, useEffect, useState } from "react"
+import { memo, useCallback, useEffect, useRef, useState } from "react"
 import type { RampStatus, RampState } from "./warehouse-visualization"
 
 type RampFilter = "all" | RampState
+
+const BOARD_BASE_WIDTH = 1440
+const BOARD_BASE_HEIGHT = 820
 
 interface WarehouseStats {
   total: number
@@ -190,10 +193,58 @@ function WarehouseLayout({
   isRampMatchingFocus,
 }: WarehouseLayoutProps) {
   const filters: RampFilter[] = ["all", "occupied", "free", "defect"]
+  const shellRef = useRef<HTMLElement | null>(null)
+  const [boardScale, setBoardScale] = useState(1)
+
+  useEffect(() => {
+    const element = shellRef.current
+    if (!element) return
+
+    const updateScale = () => {
+      const rect = element.getBoundingClientRect()
+      const availableWidth = Math.max(rect.width - 10, 1)
+      const availableHeight = Math.max(rect.height - 10, 1)
+      const nextScale = Math.max(
+        0.38,
+        Math.min(1.12, availableWidth / BOARD_BASE_WIDTH, availableHeight / BOARD_BASE_HEIGHT),
+      )
+
+      setBoardScale((current) => {
+        const roundedCurrent = Math.round(current * 1000) / 1000
+        const roundedNext = Math.round(nextScale * 1000) / 1000
+        return roundedCurrent === roundedNext ? current : roundedNext
+      })
+    }
+
+    updateScale()
+
+    if (typeof ResizeObserver !== "undefined") {
+      const observer = new ResizeObserver(updateScale)
+      observer.observe(element)
+      return () => observer.disconnect()
+    }
+
+    window.addEventListener("resize", updateScale)
+    return () => window.removeEventListener("resize", updateScale)
+  }, [])
 
   return (
-    <section className="warehouse-layout-shell">
-      <div className="warehouse-layout-board">
+    <section className="warehouse-layout-shell" ref={shellRef}>
+      <div
+        className="warehouse-layout-fit-frame"
+        style={{
+          width: BOARD_BASE_WIDTH * boardScale,
+          height: BOARD_BASE_HEIGHT * boardScale,
+        }}
+      >
+        <div
+          className="warehouse-layout-board"
+          style={{
+            width: BOARD_BASE_WIDTH,
+            height: BOARD_BASE_HEIGHT,
+            transform: `scale(${boardScale})`,
+          }}
+        >
         <div className="warehouse-layout-left" aria-label="Left ramps">
           {leftRamps.map((rampNumber) => (
             <RampCard
