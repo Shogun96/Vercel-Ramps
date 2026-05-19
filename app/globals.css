@@ -1166,3 +1166,80 @@ button {
     transform: translate(-3.15rem, -6.1rem) scale(0.94) !important;
   }
 }
+
+
+/* -------------------------------------------------------------------------- */
+/* FINAL bottom ramp layout lock                                              */
+/* -------------------------------------------------------------------------- */
+/* This is intentionally placed at the very end so responsive/fit rules cannot
+   override the requested bottom-ramp layout:
+   number top-center, Truck + Trailer underneath, side-by-side and centered. */
+
+.warehouse-layout-bottom .warehouse-ramp-card,
+.warehouse-layout-bottom .warehouse-ramp-card.compact {
+  display: grid !important;
+  grid-template-rows: minmax(0, 1fr) !important;
+  align-items: stretch !important;
+}
+
+.warehouse-layout-bottom .warehouse-ramp-card .warehouse-ramp-content,
+.warehouse-layout-bottom .warehouse-ramp-card.compact .warehouse-ramp-content {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  grid-template-rows: auto minmax(0, 1fr) !important;
+  align-items: stretch !important;
+  justify-items: center !important;
+  align-content: start !important;
+  gap: clamp(0.16rem, 0.32vh, 0.26rem) !important;
+  padding: clamp(0.2rem, 0.38vh, 0.34rem) !important;
+}
+
+.warehouse-layout-bottom .warehouse-ramp-card .warehouse-ramp-number,
+.warehouse-layout-bottom .warehouse-ramp-card.compact .warehouse-ramp-number {
+  grid-column: 1 !important;
+  grid-row: 1 !important;
+  align-self: start !important;
+  justify-self: center !important;
+  width: clamp(2rem, 2.45vw, 2.42rem) !important;
+  min-width: clamp(2rem, 2.45vw, 2.42rem) !important;
+  height: clamp(1.38rem, 2.25vh, 1.78rem) !important;
+  margin: 0 auto !important;
+  text-align: center !important;
+}
+
+.warehouse-layout-bottom .warehouse-ramp-card .warehouse-ramp-inputs,
+.warehouse-layout-bottom .warehouse-ramp-card.compact .warehouse-ramp-inputs {
+  grid-column: 1 !important;
+  grid-row: 2 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+  grid-template-rows: 1fr !important;
+  align-content: center !important;
+  align-items: center !important;
+  justify-content: center !important;
+  justify-items: stretch !important;
+  gap: clamp(0.12rem, 0.25vw, 0.22rem) !important;
+}
+
+.warehouse-layout-bottom .warehouse-ramp-card .warehouse-ramp-input,
+.warehouse-layout-bottom .warehouse-ramp-card.compact .warehouse-ramp-input {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  height: clamp(1.15rem, 2vh, 1.45rem) !important;
+  min-height: 0 !important;
+  padding-inline: clamp(0.1rem, 0.24vw, 0.24rem) !important;
+  text-align: center !important;
+}
+
+/* Keep enough height for the stacked bottom-ramp structure. */
+.warehouse-board-app {
+  --bottom-row-height: clamp(5.35rem, 9.7vh, 6.85rem) !important;
+}
