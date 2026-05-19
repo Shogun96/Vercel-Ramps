@@ -21,7 +21,9 @@ type RampState = "occupied" | "free" | "defect"
 type RampFilter = "all" | RampState
 
 const RAMP_NUMBERS = Array.from({ length: 41 }, (_, index) => index + 20)
-const TRUCK_EXIT_ANIMATION_DURATION = 1800
+const LEFT_RAMPS = Array.from({ length: 17 }, (_, index) => 60 - index)
+const RIGHT_RAMPS = Array.from({ length: 16 }, (_, index) => 20 + index)
+const BOTTOM_RAMPS = Array.from({ length: 8 }, (_, index) => 43 - index)
 
 const createDefaultStatus = (): RampStatus => ({
   active: false,
@@ -58,19 +60,15 @@ const getRampStateLabel = (status?: RampStatus) => {
 
 function WarehouseVisualizationContent() {
   const isMounted = useRef(false)
-  const containerRef = useRef<HTMLDivElement>(null)
   const initialLoadDone = useRef(false)
 
   const { syncRampStatus, isInitializing, isSupabaseAvailable, connectionStatus } = useSupabaseSync()
 
-  const [rampStatus, setRampStatus] = useState<Record<number, RampStatus>>({})
-  const [scale, setScale] = useState(1)
-  const [isReady, setIsReady] = useState(false)
-  const [orientation, setOrientation] = useState<"portrait" | "landscape">("landscape")
-  const [showUploader, setShowUploader] = useState(false)
+  const [rampStatus, setRampStatus] = useState<Record<number, RampStatus>>(initializeRampStatus())
   const [selectedRamp, setSelectedRamp] = useState<number | null>(null)
   const [rampSearch, setRampSearch] = useState("")
   const [filter, setFilter] = useState<RampFilter>("all")
+  const [showUploader, setShowUploader] = useState(false)
   const [lastLocalSave, setLastLocalSave] = useState<Date | null>(null)
 
   const saveRampStatus = useCallback(
@@ -88,38 +86,6 @@ function WarehouseVisualizationContent() {
     },
     [syncRampStatus],
   )
-
-  const updateOrientation = useCallback(() => {
-    if (typeof window === "undefined") return
-    setOrientation(window.innerHeight > window.innerWidth ? "portrait" : "landscape")
-  }, [])
-
-  const updateScale = useCallback(() => {
-    if (!isMounted.current) return
-
-    const container = containerRef.current
-    const visualization = document.querySelector("#warehouse-svg") as HTMLElement | null
-    if (!container || !visualization) return
-
-    const containerWidth = container.clientWidth
-    const containerHeight = container.clientHeight
-    const visualizationWidth = visualization.clientWidth
-    const visualizationHeight = visualization.clientHeight
-
-    if (!containerWidth || !containerHeight || !visualizationWidth || !visualizationHeight) return
-
-    const safeWidth = Math.max(containerWidth - 24, 100)
-    const safeHeight = Math.max(containerHeight - 24, 100)
-    const scaleX = safeWidth / visualizationWidth
-    const scaleY = safeHeight / visualizationHeight
-
-    const nextScale =
-      window.innerHeight > window.innerWidth
-        ? Math.min(scaleX, 0.72)
-        : Math.min(scaleX, scaleY, 0.96)
-
-    setScale(Math.max(nextScale, 0.18))
-  }, [])
 
   useEffect(() => {
     if (initialLoadDone.current) return
@@ -143,8 +109,6 @@ function WarehouseVisualizationContent() {
 
         const savedTimestamp = localStorage.getItem("rampStatusLastUpdated_localOnly")
         if (savedTimestamp) setLastLocalSave(new Date(savedTimestamp))
-      } else {
-        setRampStatus(initializeRampStatus())
       }
     } catch (error) {
       console.error("Failed to load ramp status from localStorage", error)
@@ -154,30 +118,10 @@ function WarehouseVisualizationContent() {
 
   useEffect(() => {
     isMounted.current = true
-    setIsReady(true)
-    updateOrientation()
-
-    const handleResize = () => {
-      updateOrientation()
-      window.requestAnimationFrame(updateScale)
-    }
-
-    const resizeTimer = window.setTimeout(updateScale, 120)
-
-    window.addEventListener("resize", handleResize)
-    window.addEventListener("orientationchange", handleResize)
-
     return () => {
       isMounted.current = false
-      window.clearTimeout(resizeTimer)
-      window.removeEventListener("resize", handleResize)
-      window.removeEventListener("orientationchange", handleResize)
     }
-  }, [updateOrientation, updateScale])
-
-  useEffect(() => {
-    window.requestAnimationFrame(updateScale)
-  }, [rampStatus, showUploader, filter, updateScale])
+  }, [])
 
   const dashboardStats = useMemo(() => {
     const total = RAMP_NUMBERS.length
@@ -201,28 +145,31 @@ function WarehouseVisualizationContent() {
     }
   }, [rampStatus])
 
-  const visibleRampCards = useMemo(() => {
-    const search = rampSearch.trim().toLowerCase()
-
-    return RAMP_NUMBERS.map((rampNumber) => {
+  const isRampMatchingFocus = useCallback(
+    (rampNumber: number) => {
       const status = rampStatus[rampNumber] || createDefaultStatus()
+      const search = rampSearch.trim().toLowerCase()
       const state = getRampState(status)
-      return { rampNumber, status, state }
-    })
-      .filter(({ rampNumber, status, state }) => {
-        const matchesFilter = filter === "all" || filter === state
-        const searchableText = `${rampNumber} ${status.truckValue || ""} ${status.trailerValue || ""}`.toLowerCase()
-        const matchesSearch = search === "" || searchableText.includes(search)
-        return matchesFilter && matchesSearch
-      })
-      .sort((a, b) => {
-        const stateOrder = { occupied: 0, defect: 1, free: 2 }
-        return stateOrder[a.state] - stateOrder[b.state] || b.rampNumber - a.rampNumber
-      })
-  }, [filter, rampSearch, rampStatus])
+
+      const matchesFilter = filter === "all" || filter === state
+      const searchableText = `${rampNumber} ${status.truckValue || ""} ${status.trailerValue || ""}`.toLowerCase()
+      const matchesSearch = search === "" || searchableText.includes(search)
+
+      return matchesFilter && matchesSearch
+    },
+    [filter, rampSearch, rampStatus],
+  )
+
+  const visibleFocusCount = useMemo(() => {
+    return RAMP_NUMBERS.filter((rampNumber) => isRampMatchingFocus(rampNumber)).length
+  }, [isRampMatchingFocus])
 
   const toggleUploader = useCallback(() => {
     setShowUploader((previous) => !previous)
+  }, [])
+
+  const handleSelectRamp = useCallback((rampNumber: number) => {
+    setSelectedRamp(rampNumber)
   }, [])
 
   const handleRampClick = useCallback(
@@ -234,60 +181,28 @@ function WarehouseVisualizationContent() {
 
       setRampStatus((previous) => {
         const currentStatus = previous[rampNumber] || createDefaultStatus()
-
-        if (currentStatus.active) {
-          const exitingStatus = {
-            ...previous,
-            [rampNumber]: {
-              ...currentStatus,
-              isExiting: true,
-            },
-          }
-
-          setTimeout(() => {
-            if (!isMounted.current) return
-            setRampStatus((current) => {
-              const nextStatus = {
-                ...current,
-                [rampNumber]: {
-                  ...createDefaultStatus(),
-                },
-              }
-              saveRampStatus(nextStatus)
-              return nextStatus
-            })
-          }, TRUCK_EXIT_ANIMATION_DURATION)
-
-          saveRampStatus(exitingStatus)
-          return exitingStatus
-        }
+        const hasData =
+          Boolean(currentStatus.truckValue?.trim()) ||
+          Boolean(currentStatus.trailerValue?.trim()) ||
+          currentStatus.yellow
 
         const nextStatus = {
           ...previous,
-          [rampNumber]: {
-            ...currentStatus,
-            active: true,
-            red: true,
-            yellow: false,
-            hasTruck: false,
-            isExiting: false,
-          },
-        }
-
-        setTimeout(() => {
-          if (!isMounted.current) return
-          setRampStatus((current) => {
-            const statusWithTruck = {
-              ...current,
-              [rampNumber]: {
-                ...current[rampNumber],
-                hasTruck: true,
+          [rampNumber]: hasData
+            ? {
+                ...currentStatus,
+                active: !currentStatus.active,
+                red: !currentStatus.yellow ? !currentStatus.active : false,
+                hasTruck: !currentStatus.yellow ? !currentStatus.active : false,
+              }
+            : {
+                ...currentStatus,
+                active: !currentStatus.active,
+                red: !currentStatus.active,
+                yellow: false,
+                hasTruck: !currentStatus.active,
               },
-            }
-            saveRampStatus(statusWithTruck)
-            return statusWithTruck
-          })
-        }, 50)
+        }
 
         saveRampStatus(nextStatus)
         return nextStatus
@@ -299,7 +214,6 @@ function WarehouseVisualizationContent() {
   const handleInputChange = useCallback(
     (rampNumber: number, value: string, inputType: "truck" | "trailer") => {
       if (!isMounted.current) return
-      if (rampNumber < 20 || rampNumber > 60) return
 
       setSelectedRamp(rampNumber)
 
@@ -318,126 +232,28 @@ function WarehouseVisualizationContent() {
         const hasAnyInput =
           (lowerTruckValue !== "" && lowerTruckValue !== "defect") ||
           (lowerTrailerValue !== "" && lowerTrailerValue !== "defect")
-        const isActive = hasAnyInput || isYellow
-
-        if (!isActive) {
-          if (currentStatus.hasTruck) {
-            const exitingStatus = {
-              ...previous,
-              [rampNumber]: {
-                ...updatedStatus,
-                isExiting: true,
-              },
-            }
-
-            setTimeout(() => {
-              if (!isMounted.current) return
-              setRampStatus((current) => {
-                const nextStatus = {
-                  ...current,
-                  [rampNumber]: createDefaultStatus(),
-                }
-                saveRampStatus(nextStatus)
-                return nextStatus
-              })
-            }, TRUCK_EXIT_ANIMATION_DURATION)
-
-            saveRampStatus(exitingStatus)
-            return exitingStatus
-          }
-
-          const nextStatus = {
-            ...previous,
-            [rampNumber]: {
-              ...updatedStatus,
-              active: false,
-              red: false,
-              yellow: false,
-              hasTruck: false,
-              isExiting: false,
-            },
-          }
-          saveRampStatus(nextStatus)
-          return nextStatus
-        }
-
-        if (isYellow && currentStatus.hasTruck && !currentStatus.yellow) {
-          const defectExitingStatus = {
-            ...previous,
-            [rampNumber]: {
-              ...updatedStatus,
-              yellow: true,
-              red: false,
-              active: true,
-              isExiting: true,
-            },
-          }
-
-          setTimeout(() => {
-            if (!isMounted.current) return
-            setRampStatus((current) => {
-              const nextStatus = {
-                ...current,
-                [rampNumber]: {
-                  ...current[rampNumber],
-                  active: true,
-                  red: false,
-                  yellow: true,
-                  hasTruck: false,
-                  isExiting: false,
-                },
-              }
-              saveRampStatus(nextStatus)
-              return nextStatus
-            })
-          }, TRUCK_EXIT_ANIMATION_DURATION)
-
-          saveRampStatus(defectExitingStatus)
-          return defectExitingStatus
-        }
-
-        if (!currentStatus.active && isActive && hasAnyInput) {
-          const enteringStatus = {
-            ...previous,
-            [rampNumber]: {
-              ...updatedStatus,
-              active: true,
-              red: true,
-              yellow: false,
-              hasTruck: false,
-              isExiting: false,
-            },
-          }
-
-          setTimeout(() => {
-            if (!isMounted.current) return
-            setRampStatus((current) => {
-              const nextStatus = {
-                ...current,
-                [rampNumber]: {
-                  ...current[rampNumber],
-                  hasTruck: true,
-                },
-              }
-              saveRampStatus(nextStatus)
-              return nextStatus
-            })
-          }, 50)
-
-          saveRampStatus(enteringStatus)
-          return enteringStatus
-        }
 
         const nextStatus = {
           ...previous,
           [rampNumber]: {
             ...updatedStatus,
-            active: isActive,
-            red: hasAnyInput,
+            active: hasAnyInput || isYellow || currentStatus.active,
+            red: hasAnyInput && !isYellow,
             yellow: isYellow,
-            hasTruck: hasAnyInput,
+            hasTruck: hasAnyInput && !isYellow,
             isExiting: false,
           },
+        }
+
+        if (!hasAnyInput && !isYellow && !currentStatus.active) {
+          nextStatus[rampNumber] = {
+            ...updatedStatus,
+            active: false,
+            red: false,
+            yellow: false,
+            hasTruck: false,
+            isExiting: false,
+          }
         }
 
         saveRampStatus(nextStatus)
@@ -446,10 +262,6 @@ function WarehouseVisualizationContent() {
     },
     [saveRampStatus],
   )
-
-  const handleSelectRamp = useCallback((rampNumber: number) => {
-    setSelectedRamp(rampNumber)
-  }, [])
 
   const handleClearRamp = useCallback(
     (rampNumber: number) => {
@@ -476,9 +288,10 @@ function WarehouseVisualizationContent() {
             ...createDefaultStatus(),
             active: true,
             yellow: true,
+            red: false,
+            hasTruck: false,
             inputValue: "defect",
             truckValue: "defect",
-            trailerValue: "",
           },
         }
         saveRampStatus(nextStatus)
@@ -526,27 +339,18 @@ function WarehouseVisualizationContent() {
     URL.revokeObjectURL(url)
   }, [rampStatus])
 
-  if (!isReady) {
-    return (
-      <div className="warehouse-loading">
-        <div className="warehouse-spinner" />
-        <p>Loading ramp board...</p>
-      </div>
-    )
-  }
-
   return (
-    <div id="app" className={`warehouse-app ${orientation}`}>
-      <header className="warehouse-topbar">
-        <div className="warehouse-title-block">
-          <div className="warehouse-logo">WR</div>
+    <div id="app" className="warehouse-board-app">
+      <header className="warehouse-board-header">
+        <div className="warehouse-board-title">
+          <div className="warehouse-board-logo">WR</div>
           <div>
             <h1>Warehouse Ramp Status</h1>
-            <p>Live view for ramp occupation, defects, trucks and trailers</p>
+            <p>Interactive ramp board shaped like the warehouse</p>
           </div>
         </div>
 
-        <div className="warehouse-topbar-actions">
+        <div className="warehouse-board-actions">
           <div
             className={`sync-pill ${
               isSupabaseAvailable && connectionStatus === "connected"
@@ -563,6 +367,7 @@ function WarehouseVisualizationContent() {
                 ? "Starting fast..."
                 : "Local mode"}
           </div>
+
           <button className="control-button ghost" onClick={toggleUploader}>
             {showUploader ? "Hide tools" : "Database tools"}
           </button>
@@ -581,139 +386,91 @@ function WarehouseVisualizationContent() {
         </section>
       ) : null}
 
-      <section className="kpi-grid">
-        <StatCard label="Free ramps" value={dashboardStats.free} tone="free" />
-        <StatCard label="Occupied" value={dashboardStats.occupied} tone="occupied" />
-        <StatCard label="Defect" value={dashboardStats.defect} tone="defect" />
-        <StatCard label="Utilization" value={`${dashboardStats.utilization}%`} tone="neutral" />
+      <section className="warehouse-kpi-grid">
+        <div className="warehouse-kpi-card free">
+          <span>Free ramps</span>
+          <strong>{dashboardStats.free}</strong>
+        </div>
+        <div className="warehouse-kpi-card occupied">
+          <span>Occupied</span>
+          <strong>{dashboardStats.occupied}</strong>
+        </div>
+        <div className="warehouse-kpi-card defect">
+          <span>Defect</span>
+          <strong>{dashboardStats.defect}</strong>
+        </div>
+        <div className="warehouse-kpi-card neutral">
+          <span>Utilization</span>
+          <strong>{dashboardStats.utilization}%</strong>
+        </div>
       </section>
 
-      <section className="warehouse-workspace">
-        <div className="hall-card">
-          <div className="hall-toolbar">
-            <div>
-              <h2>Hala rampe</h2>
-              <p>
-                {dashboardStats.total} ramps • saved locally
-                {lastLocalSave ? ` at ${lastLocalSave.toLocaleTimeString()}` : ""}
-              </p>
-            </div>
-
-            <div className="hall-toolbar-controls">
-              <input
-                value={rampSearch}
-                onChange={(event) => setRampSearch(event.target.value)}
-                className="ramp-search"
-                placeholder="Search ramp / truck / trailer"
-                inputMode="search"
-              />
-
-              <div className="filter-tabs" aria-label="Ramp status filters">
-                {(["all", "occupied", "free", "defect"] as RampFilter[]).map((option) => (
-                  <button
-                    key={option}
-                    className={filter === option ? "active" : ""}
-                    onClick={() => setFilter(option)}
-                    type="button"
-                  >
-                    {option}
-                  </button>
-                ))}
-              </div>
-            </div>
+      <section className="warehouse-board-toolbar">
+        <div className="warehouse-board-toolbar-left">
+          <div>
+            <h2>Warehouse layout</h2>
+            <p>
+              {visibleFocusCount} focused ramps • {dashboardStats.total} total
+              {lastLocalSave ? ` • saved at ${lastLocalSave.toLocaleTimeString()}` : ""}
+            </p>
           </div>
 
-          <div className="warehouse-container" ref={containerRef}>
-            <div
-              id="warehouse-svg"
-              style={{
-                transform: `scale(${scale})`,
-                transformOrigin: orientation === "portrait" ? "top center" : "center center",
-              }}
-            >
-              <WarehouseLayout
-                rampStatus={rampStatus}
-                onRampClick={handleRampClick}
-                onInputChange={handleInputChange}
-                orientation={orientation}
-                selectedRamp={selectedRamp}
-              />
-            </div>
-          </div>
-        </div>
-
-        <aside className="ramp-status-panel">
-          <div className="panel-header">
-            <div>
-              <h2>Ramp board</h2>
-              <p>{visibleRampCards.length} visible ramps</p>
-            </div>
-            <button className="control-button ghost small" onClick={() => {
-              setRampSearch("")
-              setFilter("all")
-              setSelectedRamp(null)
-            }}>
-              Reset view
-            </button>
-          </div>
-
-          <div className="selected-ramp-card">
+          <div className="selected-ramp-chip">
             <span>Selected ramp</span>
             <strong>{selectedRamp ?? "None"}</strong>
           </div>
+        </div>
 
-          <div className="ramp-card-list">
-            {visibleRampCards.map(({ rampNumber, status, state }) => (
-              <div
-                key={rampNumber}
-                className={`ramp-card ${state} ${selectedRamp === rampNumber ? "selected" : ""}`}
+        <div className="warehouse-board-toolbar-right">
+          <input
+            value={rampSearch}
+            onChange={(event) => setRampSearch(event.target.value)}
+            className="ramp-search"
+            placeholder="Search ramp / truck / trailer"
+            inputMode="search"
+          />
+
+          <div className="filter-tabs" aria-label="Ramp status filters">
+            {(["all", "occupied", "free", "defect"] as RampFilter[]).map((option) => (
+              <button
+                key={option}
+                className={filter === option ? "active" : ""}
+                onClick={() => setFilter(option)}
+                type="button"
               >
-                <button
-                  type="button"
-                  className="ramp-card-main"
-                  onClick={() => handleSelectRamp(rampNumber)}
-                >
-                  <span className="ramp-card-number">{rampNumber}</span>
-                  <span className="ramp-card-details">
-                    <strong>{getRampStateLabel(status)}</strong>
-                    <small>
-                      {status.truckValue || "No truck"} {status.trailerValue ? `• ${status.trailerValue}` : ""}
-                    </small>
-                  </span>
-                </button>
-
-                <div className="ramp-card-actions">
-                  <button type="button" onClick={() => handleMarkDefect(rampNumber)}>
-                    Defect
-                  </button>
-                  <button type="button" onClick={() => handleClearRamp(rampNumber)}>
-                    Clear
-                  </button>
-                </div>
-              </div>
+                {option}
+              </button>
             ))}
           </div>
-        </aside>
+
+          <button
+            className="control-button ghost small"
+            onClick={() => {
+              setRampSearch("")
+              setFilter("all")
+              setSelectedRamp(null)
+            }}
+          >
+            Reset view
+          </button>
+        </div>
       </section>
 
-      <Legend />
-    </div>
-  )
-}
+      <WarehouseLayout
+        rampStatus={rampStatus}
+        selectedRamp={selectedRamp}
+        leftRamps={LEFT_RAMPS}
+        rightRamps={RIGHT_RAMPS}
+        bottomRamps={BOTTOM_RAMPS}
+        onRampClick={handleRampClick}
+        onSelectRamp={handleSelectRamp}
+        onInputChange={handleInputChange}
+        onMarkDefect={handleMarkDefect}
+        onClearRamp={handleClearRamp}
+        isRampMatchingFocus={isRampMatchingFocus}
+      />
 
-function StatCard({
-  label,
-  value,
-  tone,
-}: {
-  label: string
-  value: string | number
-  tone: "free" | "occupied" | "defect" | "neutral"
-}) {
-  return (
-    <div className={`stat-card ${tone}`}>
-      <span>{label}</span>
-      <strong>{value}</strong>
+      <Legend />
     </div>
   )
 }
