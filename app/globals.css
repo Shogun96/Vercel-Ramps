@@ -748,3 +748,67 @@ button {
     bottom: max(2.5rem, calc(env(safe-area-inset-bottom) + 2.2rem));
   }
 }
+
+
+/* -------------------------------------------------------------------------- */
+/* Bottom dock ramp cards: number top center, inputs underneath               */
+/* -------------------------------------------------------------------------- */
+
+.warehouse-ramp-card.compact .warehouse-ramp-content {
+  grid-template-columns: 1fr !important;
+  grid-template-rows: auto minmax(0, 1fr) !important;
+  align-items: stretch !important;
+  justify-items: center !important;
+  gap: clamp(0.14rem, 0.25vh, 0.22rem) !important;
+  padding: clamp(0.2rem, 0.36vh, 0.34rem) !important;
+}
+
+.warehouse-ramp-card.compact .warehouse-ramp-number {
+  align-self: start !important;
+  justify-self: center !important;
+  width: clamp(2rem, 2.45vw, 2.4rem) !important;
+  min-width: clamp(2rem, 2.45vw, 2.4rem) !important;
+  height: clamp(1.45rem, 2.35vh, 1.8rem) !important;
+  margin: 0 auto !important;
+}
+
+.warehouse-ramp-card.compact .warehouse-ramp-inputs {
+  width: 100% !important;
+  height: 100% !important;
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  grid-template-rows: repeat(2, minmax(0, 1fr)) !important;
+  align-content: center !important;
+  align-items: center !important;
+  justify-items: center !important;
+  gap: clamp(0.12rem, 0.25vh, 0.2rem) !important;
+}
+
+.warehouse-ramp-card.compact .warehouse-ramp-input {
+  width: min(100%, 7.5rem) !important;
+  height: clamp(1.15rem, 2vh, 1.45rem) !important;
+  min-height: 0 !important;
+  text-align: center !important;
+}
+
+.warehouse-ramp-card.compact .warehouse-ramp-actions {
+  right: 50% !important;
+  bottom: 0.18rem !important;
+  transform: translate(50%, 0.2rem) !important;
+}
+
+.warehouse-ramp-card.compact:hover .warehouse-ramp-actions,
+.warehouse-ramp-card.compact.selected .warehouse-ramp-actions {
+  transform: translate(50%, 0) !important;
+}
+
+/* Give the bottom row just enough height so the stacked inputs stay readable. */
+.warehouse-board-app {
+  --bottom-row-height: clamp(5.7rem, 10.2vh, 7.1rem) !important;
+}
+
+@media (max-width: 1180px) {
+  .warehouse-ramp-card.compact .warehouse-ramp-input {
+    width: min(100%, 7rem) !important;
+  }
+}
