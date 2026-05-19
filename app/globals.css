@@ -1284,3 +1284,450 @@ input {
     min-height: 27rem;
   }
 }
+
+
+
+/* -------------------------------------------------------------------------- */
+/* Final usability + realistic truck refinements                              */
+/* -------------------------------------------------------------------------- */
+
+:root {
+  --warehouse-bg: #f3f6fb;
+  --warehouse-text: #111827;
+  --warehouse-muted: #64748b;
+  --warehouse-line: #d9e2ef;
+  --warehouse-card: #ffffff;
+  --warehouse-free: #16a34a;
+  --warehouse-occupied: #dc2626;
+  --warehouse-defect: #eab308;
+  --warehouse-selected: #2563eb;
+}
+
+html,
+body {
+  background: linear-gradient(180deg, #f8fafc 0%, #edf2f7 100%) !important;
+}
+
+#app.warehouse-app {
+  gap: 0.65rem;
+  color: var(--warehouse-text);
+}
+
+.warehouse-topbar,
+.hall-card,
+.ramp-status-panel,
+.database-tools-panel,
+.stat-card,
+.legend {
+  background: rgba(255, 255, 255, 0.96) !important;
+  border: 1px solid var(--warehouse-line) !important;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08) !important;
+  backdrop-filter: blur(12px);
+}
+
+.warehouse-topbar {
+  border-radius: 1rem !important;
+  padding: 0.7rem 0.85rem !important;
+  top: max(0.45rem, env(safe-area-inset-top)) !important;
+}
+
+.warehouse-logo {
+  width: 2.65rem !important;
+  height: 2.65rem !important;
+  border-radius: 0.85rem !important;
+  background: linear-gradient(135deg, #1f2937, #2563eb) !important;
+}
+
+.warehouse-title-block h1 {
+  font-size: clamp(1.05rem, 1.7vw, 1.55rem) !important;
+  letter-spacing: -0.025em !important;
+}
+
+.warehouse-title-block p {
+  font-size: 0.78rem !important;
+}
+
+.control-button {
+  padding: 0.58rem 0.78rem !important;
+  font-size: 0.76rem !important;
+  box-shadow: none !important;
+}
+
+.control-button.ghost {
+  background: #f8fafc !important;
+}
+
+.sync-pill {
+  background: #f8fafc !important;
+  border: 1px solid #e2e8f0;
+  padding: 0.5rem 0.65rem !important;
+}
+
+.sync-pill.connecting span {
+  background: #f59e0b;
+  box-shadow: 0 0 0 0.25rem rgba(245, 158, 11, 0.12);
+}
+
+.kpi-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.6rem !important;
+}
+
+.stat-card {
+  border-radius: 1rem !important;
+  padding: 0.72rem 0.85rem !important;
+}
+
+.stat-card span {
+  font-size: 0.68rem !important;
+}
+
+.stat-card strong {
+  font-size: clamp(1.4rem, 2.35vw, 2.25rem) !important;
+}
+
+.warehouse-workspace {
+  grid-template-columns: minmax(0, 1fr) minmax(17rem, 21rem) !important;
+  gap: 0.75rem !important;
+  min-height: min(74dvh, 54rem) !important;
+}
+
+.hall-card,
+.ramp-status-panel {
+  border-radius: 1.15rem !important;
+}
+
+.hall-toolbar,
+.panel-header {
+  padding: 0.72rem 0.85rem !important;
+  background: #ffffff !important;
+}
+
+.hall-toolbar h2,
+.panel-header h2 {
+  font-size: 1rem !important;
+}
+
+.hall-toolbar p,
+.panel-header p {
+  font-size: 0.73rem !important;
+}
+
+.hall-toolbar-controls {
+  gap: 0.45rem !important;
+}
+
+.ramp-search {
+  height: 2.45rem !important;
+  width: min(18rem, 42vw) !important;
+  padding: 0.55rem 0.82rem !important;
+  border-radius: 0.8rem !important;
+  background: #f8fafc !important;
+}
+
+.filter-tabs {
+  border-radius: 0.85rem !important;
+  background: #edf2f7 !important;
+}
+
+.filter-tabs button {
+  padding: 0.42rem 0.62rem !important;
+  font-size: 0.7rem !important;
+}
+
+.warehouse-container {
+  min-height: 38rem !important;
+  background:
+    linear-gradient(90deg, rgba(148, 163, 184, 0.12) 1px, transparent 1px),
+    linear-gradient(rgba(148, 163, 184, 0.12) 1px, transparent 1px),
+    #e9eef5 !important;
+  background-size: 36px 36px !important;
+  border-top: 1px solid #e2e8f0 !important;
+}
+
+#warehouse-svg {
+  filter: none;
+}
+
+.ramp-status-panel {
+  max-height: none;
+}
+
+.selected-ramp-card {
+  margin: 0.72rem !important;
+  border-radius: 1rem !important;
+  padding: 0.72rem !important;
+  background: linear-gradient(135deg, #2563eb, #1e293b) !important;
+}
+
+.ramp-card-list {
+  padding: 0 0.72rem 0.72rem !important;
+  gap: 0.45rem !important;
+}
+
+.ramp-card {
+  border-radius: 0.9rem !important;
+}
+
+.ramp-card-main {
+  padding: 0.62rem !important;
+}
+
+.ramp-card-number {
+  width: 2.15rem !important;
+  height: 2.15rem !important;
+  border-radius: 0.75rem !important;
+}
+
+.ramp-card-actions button {
+  padding: 0.47rem !important;
+}
+
+.legend {
+  border-radius: 1rem !important;
+  padding: 0.55rem 0.75rem !important;
+}
+
+/* Cleaner SVG hall */
+.warehouse-hall-label {
+  fill: rgba(255, 255, 255, 0.13) !important;
+  font-size: 48px !important;
+}
+
+.warehouse-zone-label {
+  fill: rgba(15, 23, 42, 0.72) !important;
+  font-size: 20px !important;
+}
+
+/* More realistic truck drawing */
+.realistic-truck {
+  pointer-events: none;
+  transform-box: fill-box;
+  transform-origin: center;
+  will-change: transform, opacity;
+}
+
+.truck-trailer-body rect:first-child {
+  filter: drop-shadow(0 5px 5px rgba(15, 23, 42, 0.18));
+}
+
+.truck-tractor {
+  transform-box: fill-box;
+  transform-origin: 84% 50%;
+  transform: translate(-238px, 0);
+  will-change: transform;
+}
+
+.truck-wheel {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.truck-left-enter,
+.truck-right-enter,
+.truck-bottom-enter {
+  animation-duration: 2.15s !important;
+  animation-timing-function: cubic-bezier(0.22, 0.92, 0.24, 1) !important;
+}
+
+.truck-left-exit,
+.truck-right-exit,
+.truck-bottom-exit {
+  animation-duration: 1.45s !important;
+  animation-timing-function: cubic-bezier(0.42, 0, 0.8, 0.25) !important;
+}
+
+/* Truck arrives, pulls forward, then reverses gently into the ramp */
+@keyframes truck-enter-left {
+  0% { opacity: 0; transform: translate(-430px, 28px) rotate(-2deg); }
+  12% { opacity: 1; }
+  44% { transform: translate(-150px, 10px) rotate(-1deg); }
+  64% { transform: translate(34px, -5px) rotate(1.5deg); }
+  82% { transform: translate(10px, 1px) rotate(-0.8deg); }
+  94% { transform: translate(2px, 0) rotate(0.2deg); }
+  100% { opacity: 1; transform: translate(0, 0) rotate(0deg); }
+}
+
+@keyframes truck-enter-right {
+  0% { opacity: 0; transform: translate(430px, 28px) rotate(2deg); }
+  12% { opacity: 1; }
+  44% { transform: translate(150px, 10px) rotate(1deg); }
+  64% { transform: translate(-34px, -5px) rotate(-1.5deg); }
+  82% { transform: translate(-10px, 1px) rotate(0.8deg); }
+  94% { transform: translate(-2px, 0) rotate(-0.2deg); }
+  100% { opacity: 1; transform: translate(0, 0) rotate(0deg); }
+}
+
+@keyframes truck-enter-bottom {
+  0% { opacity: 0; transform: translate(-34px, 430px) rotate(-2deg); }
+  12% { opacity: 1; }
+  44% { transform: translate(-12px, 150px) rotate(-1deg); }
+  64% { transform: translate(6px, -34px) rotate(1.5deg); }
+  82% { transform: translate(0, -10px) rotate(-0.8deg); }
+  94% { transform: translate(0, -2px) rotate(0.2deg); }
+  100% { opacity: 1; transform: translate(0, 0) rotate(0deg); }
+}
+
+@keyframes truck-exit-left {
+  0% { opacity: 1; transform: translate(0, 0) rotate(0deg); }
+  26% { transform: translate(24px, 0) rotate(0.5deg); }
+  58% { transform: translate(-160px, 12px) rotate(-1deg); }
+  100% { opacity: 0; transform: translate(-430px, 28px) rotate(-2deg); }
+}
+
+@keyframes truck-exit-right {
+  0% { opacity: 1; transform: translate(0, 0) rotate(0deg); }
+  26% { transform: translate(-24px, 0) rotate(-0.5deg); }
+  58% { transform: translate(160px, 12px) rotate(1deg); }
+  100% { opacity: 0; transform: translate(430px, 28px) rotate(2deg); }
+}
+
+@keyframes truck-exit-bottom {
+  0% { opacity: 1; transform: translate(0, 0) rotate(0deg); }
+  26% { transform: translate(0, 24px) rotate(0.5deg); }
+  58% { transform: translate(-12px, 160px) rotate(-1deg); }
+  100% { opacity: 0; transform: translate(-34px, 430px) rotate(-2deg); }
+}
+
+/* Cab articulation: small steering correction only, no wild swing */
+.truck-left-enter .truck-tractor {
+  animation: tractor-left-enter 2.15s cubic-bezier(0.22, 0.92, 0.24, 1) forwards;
+}
+.truck-right-enter .truck-tractor {
+  animation: tractor-right-enter 2.15s cubic-bezier(0.22, 0.92, 0.24, 1) forwards;
+}
+.truck-bottom-enter .truck-tractor {
+  animation: tractor-bottom-enter 2.15s cubic-bezier(0.22, 0.92, 0.24, 1) forwards;
+}
+.truck-left-exit .truck-tractor {
+  animation: tractor-left-exit 1.45s cubic-bezier(0.42, 0, 0.8, 0.25) forwards;
+}
+.truck-right-exit .truck-tractor {
+  animation: tractor-right-exit 1.45s cubic-bezier(0.42, 0, 0.8, 0.25) forwards;
+}
+.truck-bottom-exit .truck-tractor {
+  animation: tractor-bottom-exit 1.45s cubic-bezier(0.42, 0, 0.8, 0.25) forwards;
+}
+
+@keyframes tractor-left-enter {
+  0% { transform: translate(-238px, 0) rotate(-4deg); }
+  45% { transform: translate(-238px, 0) rotate(-2deg); }
+  66% { transform: translate(-238px, 0) rotate(5deg); }
+  88% { transform: translate(-238px, 0) rotate(-1deg); }
+  100% { transform: translate(-238px, 0) rotate(0deg); }
+}
+
+@keyframes tractor-right-enter {
+  0% { transform: translate(-238px, 0) rotate(4deg); }
+  45% { transform: translate(-238px, 0) rotate(2deg); }
+  66% { transform: translate(-238px, 0) rotate(-5deg); }
+  88% { transform: translate(-238px, 0) rotate(1deg); }
+  100% { transform: translate(-238px, 0) rotate(0deg); }
+}
+
+@keyframes tractor-bottom-enter {
+  0% { transform: translate(-238px, 0) rotate(-4deg); }
+  45% { transform: translate(-238px, 0) rotate(-2deg); }
+  66% { transform: translate(-238px, 0) rotate(5deg); }
+  88% { transform: translate(-238px, 0) rotate(-1deg); }
+  100% { transform: translate(-238px, 0) rotate(0deg); }
+}
+
+@keyframes tractor-left-exit {
+  0% { transform: translate(-238px, 0) rotate(0deg); }
+  30% { transform: translate(-238px, 0) rotate(-2deg); }
+  100% { transform: translate(-238px, 0) rotate(-4deg); }
+}
+
+@keyframes tractor-right-exit {
+  0% { transform: translate(-238px, 0) rotate(0deg); }
+  30% { transform: translate(-238px, 0) rotate(2deg); }
+  100% { transform: translate(-238px, 0) rotate(4deg); }
+}
+
+@keyframes tractor-bottom-exit {
+  0% { transform: translate(-238px, 0) rotate(0deg); }
+  30% { transform: translate(-238px, 0) rotate(-2deg); }
+  100% { transform: translate(-238px, 0) rotate(-4deg); }
+}
+
+.truck-left-enter .truck-wheel,
+.truck-right-enter .truck-wheel,
+.truck-bottom-enter .truck-wheel,
+.truck-left-exit .truck-wheel,
+.truck-right-exit .truck-wheel,
+.truck-bottom-exit .truck-wheel {
+  animation: truck-wheel-roll 0.42s linear infinite;
+}
+
+@keyframes truck-wheel-roll {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 1180px) {
+  .warehouse-workspace {
+    grid-template-columns: 1fr !important;
+    min-height: auto !important;
+  }
+
+  .ramp-status-panel {
+    max-height: 23rem !important;
+  }
+
+  .warehouse-container {
+    min-height: 34rem !important;
+  }
+}
+
+@media (max-width: 780px) {
+  .warehouse-topbar {
+    gap: 0.65rem !important;
+  }
+
+  .warehouse-topbar-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 0.45rem !important;
+  }
+
+  .kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .hall-toolbar {
+    gap: 0.7rem !important;
+  }
+
+  .ramp-search {
+    width: 100% !important;
+  }
+
+  .warehouse-container {
+    min-height: 30rem !important;
+  }
+}
+
+@media (max-width: 520px) {
+  .warehouse-title-block p {
+    display: none;
+  }
+
+  .warehouse-topbar-actions {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  .sync-pill {
+    grid-column: 1 / -1;
+  }
+
+  .warehouse-container {
+    min-height: 28rem !important;
+  }
+
+  .ramp-status-panel {
+    max-height: 25rem !important;
+  }
+}
+
+/* Keep SVG wheel positions stable. */
+.truck-wheel { animation: none !important; }

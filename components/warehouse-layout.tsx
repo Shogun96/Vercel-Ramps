@@ -50,135 +50,141 @@ const Truck = memo(
     x,
     y,
     side,
-    flip, // kept for backward-compat with the existing call site (not used)
+    flip, // kept for backward compatibility with the existing call site
     animationClass,
   }: { x: number; y: number; side: string; flip: boolean; animationClass: string }) => {
-    // Base drawing: rear bumper (dock contact) is at (0,0); trailer extends towards negative X.
-    // Orientation per side so we don't rely on mirroring (mirroring tends to look wrong for detailed trucks).
+    // Top-view semi truck. The dock contact point is the rear of the trailer at x=0.
+    // The complete truck extends backwards on the negative X axis, then the whole drawing is rotated by side.
     const rotation = side === "bottom" ? 270 : side === "right" ? 180 : 0
+
+    const trailerWheels = [
+      { x: -52, y: -35 },
+      { x: -76, y: -35 },
+      { x: -52, y: 27 },
+      { x: -76, y: 27 },
+      { x: -104, y: -35 },
+      { x: -128, y: -35 },
+      { x: -104, y: 27 },
+      { x: -128, y: 27 },
+    ]
+
+    const tractorWheels = [
+      { x: -292, y: -34 },
+      { x: -316, y: -34 },
+      { x: -292, y: 26 },
+      { x: -316, y: 26 },
+      { x: -366, y: -30 },
+      { x: -366, y: 22 },
+    ]
 
     return (
       <g
-        className={`truck-motion ${animationClass}`}
+        className={`truck-motion realistic-truck ${animationClass}`}
         style={{ transformBox: "fill-box", transformOrigin: "center" }}
       >
         <g transform={`translate(${x}, ${y}) rotate(${rotation})`}>
-          {/* Shadow */}
-          <g opacity="0.35" transform="translate(-2, 2)">
-            <rect x="-226" y="-26" width="226" height="52" rx="6" fill="#000000" />
-            <rect x="-304" y="-24" width="78" height="48" rx="10" fill="#000000" />
+          {/* Ground shadow */}
+          <g opacity="0.26" transform="translate(-4, 5)">
+            <rect x="-238" y="-34" width="238" height="68" rx="12" fill="#020617" />
+            <rect x="-384" y="-38" width="148" height="76" rx="18" fill="#020617" />
           </g>
 
-          {/* TRAILER */}
-          <g>
-            {/* outer */}
-            <rect
-              className="truck-trailer"
-              x="-226"
-              y="-26"
-              width="226"
-              height="52"
-              rx="6"
-              fill="#f8fafc"
-              stroke="#0b1220"
-              strokeWidth="1.3"
-            />
-            {/* inner panel */}
-            <rect x="-220" y="-20" width="214" height="40" rx="5" fill="#ffffff" opacity="0.55" />
-            {/* ribs */}
-            {Array.from({ length: 12 }).map((_, i) => (
+          {/* Trailer body */}
+          <g className="truck-trailer-body">
+            <rect x="-238" y="-31" width="238" height="62" rx="9" fill="#f8fafc" stroke="#0f172a" strokeWidth="2" />
+            <rect x="-229" y="-23" width="220" height="46" rx="6" fill="#ffffff" opacity="0.9" />
+            <line x1="-119" y1="-23" x2="-119" y2="23" stroke="#cbd5e1" strokeWidth="2" />
+            <line x1="-12" y1="-23" x2="-12" y2="23" stroke="#cbd5e1" strokeWidth="2" />
+            {Array.from({ length: 10 }).map((_, index) => (
               <line
-                key={`rib-${i}`}
-                x1={-212 + i * 18}
-                y1={-23}
-                x2={-212 + i * 18}
-                y2={23}
-                stroke="#64748b"
+                key={`trailer-rib-${index}`}
+                x1={-218 + index * 20}
+                y1="-27"
+                x2={-218 + index * 20}
+                y2="27"
+                stroke="#94a3b8"
                 strokeWidth="1"
-                opacity="0.22"
+                opacity="0.25"
               />
             ))}
-            {/* reflective strip */}
-            <rect x="-214" y="18" width="178" height="4" rx="2" fill="#f59e0b" opacity="0.55" />
+            <rect x="-224" y="-29" width="190" height="4" rx="2" fill="#fbbf24" opacity="0.75" />
+            <rect x="-224" y="25" width="190" height="4" rx="2" fill="#fbbf24" opacity="0.75" />
 
-            {/* rear bumper + doors at dock */}
-            <rect x="-10" y="-24" width="10" height="48" rx="3" fill="#0b1220" opacity="0.92" />
-            <rect x="-6.5" y="-18" width="3" height="36" rx="1.5" fill="#e5e7eb" opacity="0.8" />
-            <rect x="-3" y="-18" width="2" height="36" rx="1" fill="#e5e7eb" opacity="0.45" />
+            {/* Rear doors / dock side */}
+            <rect x="-9" y="-29" width="9" height="58" rx="3" fill="#111827" />
+            <line x1="-5" y1="-22" x2="-5" y2="22" stroke="#e2e8f0" strokeWidth="1.5" opacity="0.75" />
+            <circle cx="-16" cy="-19" r="4" fill="#ef4444" />
+            <circle cx="-16" cy="19" r="4" fill="#ef4444" />
 
-            {/* tail lights */}
-            <rect x="-18" y="-16" width="7" height="9" rx="2" fill="#ef4444" opacity="0.95" />
-            <rect x="-18" y="7" width="7" height="9" rx="2" fill="#ef4444" opacity="0.95" />
-
-            {/* landing gear */}
-            <rect x="-178" y="-30" width="8" height="10" rx="2" fill="#111827" opacity="0.85" />
-            <rect x="-178" y="20" width="8" height="10" rx="2" fill="#111827" opacity="0.85" />
-            <rect x="-176" y="-20" width="4" height="40" rx="2" fill="#334155" opacity="0.75" />
+            {/* Landing gear */}
+            <rect x="-185" y="-39" width="8" height="11" rx="2" fill="#0f172a" />
+            <rect x="-185" y="28" width="8" height="11" rx="2" fill="#0f172a" />
+            <rect x="-183" y="-26" width="4" height="52" rx="2" fill="#334155" opacity="0.9" />
           </g>
 
-          {/* FIFTH WHEEL / KINGPIN AREA */}
-          <g opacity="0.95">
-            <rect x="-244" y="-16" width="18" height="32" rx="6" fill="#0f172a" opacity="0.75" />
-            <rect x="-238" y="-10" width="10" height="20" rx="4" fill="#111827" opacity="0.8" />
+          {/* Kingpin / fifth wheel */}
+          <g className="truck-coupling">
+            <rect x="-257" y="-17" width="22" height="34" rx="7" fill="#111827" opacity="0.9" />
+            <circle cx="-244" cy="0" r="7" fill="#475569" />
           </g>
 
-          {/* TRACTOR (separate group so it can articulate during the maneuver) */}
-          <g
-            className="truck-tractor"
-            style={{ transformBox: "fill-box", transformOrigin: "70% 50%" }}
-            transform="translate(-226, 0)"
-          >
-            {/* chassis */}
-            <rect x="-86" y="-20" width="86" height="40" rx="10" fill="#0f172a" opacity="0.92" />
-            {/* cab */}
+          {/* Tractor group articulates during the animation */}
+          <g className="truck-tractor">
+            {/* Rear frame */}
+            <rect x="-116" y="-23" width="112" height="46" rx="10" fill="#0f172a" />
+            <rect x="-103" y="-30" width="46" height="7" rx="3.5" fill="#94a3b8" opacity="0.85" />
+            <rect x="-103" y="23" width="46" height="7" rx="3.5" fill="#94a3b8" opacity="0.85" />
+
+            {/* Sleeper/cab body */}
             <path
-              d="M -78 -24 h 44 a 10 10 0 0 1 10 10 v 28 a 10 10 0 0 1 -10 10 h -30 l -14 -9 v -30 z"
-              fill="#e5e7eb"
-              stroke="#0b1220"
-              strokeWidth="1.3"
+              d="M -132 -34 h 68 c 13 0 24 11 24 24 v 20 c 0 13 -11 24 -24 24 h -70 c -12 0 -22 -10 -22 -22 v -24 c 0 -12 10 -22 24 -22 z"
+              fill="#2563eb"
+              stroke="#0f172a"
+              strokeWidth="2"
             />
-            {/* hood */}
-            <rect x="-98" y="-18" width="20" height="36" rx="10" fill="#111827" opacity="0.95" />
-            {/* grille */}
-            <rect x="-98" y="-6" width="9" height="12" rx="3" fill="#0b1220" opacity="0.35" />
-            {/* windshield */}
-            <rect x="-58" y="-14" width="16" height="28" rx="5" fill="#93c5fd" opacity="0.85" />
-            {/* side window */}
-            <rect x="-40" y="-12" width="10" height="10" rx="3" fill="#93c5fd" opacity="0.65" />
-            {/* roof fairing */}
-            <path d="M -46 -24 h 12 a 8 8 0 0 1 8 8 v 4 h -20 z" fill="#cbd5e1" opacity="0.95" />
-            {/* tanks */}
-            <rect x="-62" y="20" width="28" height="6" rx="3" fill="#9ca3af" opacity="0.85" />
-            {/* lights */}
-            <rect x="-102" y="-10" width="6" height="6" rx="2" fill="#fef9c3" opacity="0.95" />
-            <rect x="-102" y="4" width="6" height="6" rx="2" fill="#fef9c3" opacity="0.95" />
+            <rect x="-124" y="-26" width="48" height="52" rx="8" fill="#1d4ed8" opacity="0.9" />
+            <rect x="-72" y="-25" width="18" height="50" rx="6" fill="#0f172a" opacity="0.35" />
+
+            {/* Hood / front nose */}
+            <path
+              d="M -156 -26 h -32 c -13 0 -23 10 -23 23 v 6 c 0 13 10 23 23 23 h 32 z"
+              fill="#1e293b"
+              stroke="#0f172a"
+              strokeWidth="2"
+            />
+            <rect x="-208" y="-13" width="13" height="26" rx="4" fill="#111827" />
+            <line x1="-203" y1="-9" x2="-203" y2="9" stroke="#64748b" strokeWidth="2" />
+
+            {/* Windows */}
+            <path d="M -143 -25 h 28 v 18 h -36 c 1 -8 4 -14 8 -18 z" fill="#bae6fd" opacity="0.95" />
+            <path d="M -143 25 h 28 v -18 h -36 c 1 8 4 14 8 18 z" fill="#bae6fd" opacity="0.9" />
+            <rect x="-109" y="-24" width="18" height="14" rx="3" fill="#7dd3fc" opacity="0.82" />
+            <rect x="-109" y="10" width="18" height="14" rx="3" fill="#7dd3fc" opacity="0.82" />
+
+            {/* Mirrors */}
+            <rect x="-151" y="-43" width="15" height="5" rx="2" fill="#111827" />
+            <rect x="-151" y="38" width="15" height="5" rx="2" fill="#111827" />
+
+            {/* Headlights */}
+            <circle cx="-213" cy="-15" r="5" fill="#fef3c7" />
+            <circle cx="-213" cy="15" r="5" fill="#fef3c7" />
+            <circle cx="-213" cy="-15" r="9" fill="#fde68a" opacity="0.16" />
+            <circle cx="-213" cy="15" r="9" fill="#fde68a" opacity="0.16" />
           </g>
 
-          {/* WHEELS (top-down) */}
-          {[
-            // trailer tandem axles (dual wheels)
-            { x: -54, y: -34 },
-            { x: -72, y: -34 },
-            { x: -54, y: 26 },
-            { x: -72, y: 26 },
-            { x: -94, y: -34 },
-            { x: -112, y: -34 },
-            { x: -94, y: 26 },
-            { x: -112, y: 26 },
+          {/* Trailer wheels */}
+          {trailerWheels.map((wheel, index) => (
+            <g key={`trailer-wheel-${index}`} className="truck-wheel" transform={`translate(${wheel.x}, ${wheel.y})`}>
+              <rect x="-9" y="-6" width="18" height="12" rx="4" fill="#020617" />
+              <rect x="-4" y="-3" width="8" height="6" rx="2" fill="#94a3b8" opacity="0.82" />
+            </g>
+          ))}
 
-            // tractor rear axle (duals)
-            { x: -286, y: -34 },
-            { x: -304, y: -34 },
-            { x: -286, y: 26 },
-            { x: -304, y: 26 },
-
-            // tractor front axle (singles)
-            { x: -322, y: -30 },
-            { x: -322, y: 22 },
-          ].map((t, idx) => (
-            <g key={`wheel-${idx}`}>
-              <rect className="truck-tire" x={t.x} y={t.y} width="14" height="10" rx="3" />
-              <rect className="truck-rim" x={t.x + 4} y={t.y + 3} width="6" height="4" rx="2" />
+          {/* Tractor wheels */}
+          {tractorWheels.map((wheel, index) => (
+            <g key={`tractor-wheel-${index}`} className="truck-wheel" transform={`translate(${wheel.x}, ${wheel.y})`}>
+              <rect x="-10" y="-6" width="20" height="12" rx="4" fill="#020617" />
+              <rect x="-4" y="-3" width="8" height="6" rx="2" fill="#94a3b8" opacity="0.82" />
             </g>
           ))}
         </g>

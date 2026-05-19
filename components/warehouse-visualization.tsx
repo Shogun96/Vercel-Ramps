@@ -449,7 +449,6 @@ function WarehouseVisualizationContent() {
 
   const handleSelectRamp = useCallback((rampNumber: number) => {
     setSelectedRamp(rampNumber)
-    setRampSearch(String(rampNumber))
   }, [])
 
   const handleClearRamp = useCallback(
