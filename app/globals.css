@@ -751,70 +751,187 @@ button {
 
 
 /* -------------------------------------------------------------------------- */
-/* Bottom dock ramp cards: number top center, inputs underneath               */
+/* Orbital tools menu + change trailer popup                                  */
 /* -------------------------------------------------------------------------- */
 
-.warehouse-ramp-card.compact .warehouse-ramp-content {
-  grid-template-columns: 1fr !important;
-  grid-template-rows: auto minmax(0, 1fr) !important;
-  align-items: stretch !important;
-  justify-items: center !important;
-  gap: clamp(0.14rem, 0.25vh, 0.22rem) !important;
-  padding: clamp(0.2rem, 0.36vh, 0.34rem) !important;
+.tools-dock {
+  width: 3.45rem !important;
+  height: 3.45rem !important;
 }
 
-.warehouse-ramp-card.compact .warehouse-ramp-number {
-  align-self: start !important;
-  justify-self: center !important;
-  width: clamp(2rem, 2.45vw, 2.4rem) !important;
-  min-width: clamp(2rem, 2.45vw, 2.4rem) !important;
-  height: clamp(1.45rem, 2.35vh, 1.8rem) !important;
-  margin: 0 auto !important;
-}
-
-.warehouse-ramp-card.compact .warehouse-ramp-inputs {
-  width: 100% !important;
-  height: 100% !important;
+.tools-main {
+  z-index: 3 !important;
   display: grid !important;
-  grid-template-columns: 1fr !important;
-  grid-template-rows: repeat(2, minmax(0, 1fr)) !important;
-  align-content: center !important;
-  align-items: center !important;
-  justify-items: center !important;
-  gap: clamp(0.12rem, 0.25vh, 0.2rem) !important;
+  place-items: center !important;
+  background: radial-gradient(circle at 35% 25%, #60a5fa, #1d4ed8 52%, #172033 100%) !important;
+  box-shadow: 0 16px 36px rgba(37, 99, 235, 0.28), inset 0 0 0 1px rgba(255,255,255,0.18) !important;
+  transition: transform 0.18s ease, box-shadow 0.18s ease !important;
 }
 
-.warehouse-ramp-card.compact .warehouse-ramp-input {
-  width: min(100%, 7.5rem) !important;
-  height: clamp(1.15rem, 2vh, 1.45rem) !important;
-  min-height: 0 !important;
-  text-align: center !important;
+.tools-dock:hover .tools-main,
+.tools-dock:focus-within .tools-main {
+  transform: scale(1.04) rotate(-4deg) !important;
+  box-shadow: 0 20px 44px rgba(37, 99, 235, 0.36), inset 0 0 0 1px rgba(255,255,255,0.22) !important;
 }
 
-.warehouse-ramp-card.compact .warehouse-ramp-actions {
-  right: 50% !important;
-  bottom: 0.18rem !important;
-  transform: translate(50%, 0.2rem) !important;
+.tools-bubbles {
+  position: absolute !important;
+  inset: 0 !important;
+  right: auto !important;
+  bottom: auto !important;
+  display: block !important;
+  opacity: 1 !important;
+  pointer-events: none !important;
+  transform: none !important;
 }
 
-.warehouse-ramp-card.compact:hover .warehouse-ramp-actions,
-.warehouse-ramp-card.compact.selected .warehouse-ramp-actions {
-  transform: translate(50%, 0) !important;
+.tools-bubbles button {
+  position: absolute !important;
+  left: 50% !important;
+  top: 50% !important;
+  width: 3.05rem !important;
+  height: 3.05rem !important;
+  margin-left: -1.525rem !important;
+  margin-top: -1.525rem !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transform: translate(0, 0) scale(0.72) !important;
+  transition:
+    opacity 0.18s ease,
+    transform 0.22s cubic-bezier(.2,.9,.25,1.15),
+    box-shadow 0.16s ease !important;
 }
 
-/* Give the bottom row just enough height so the stacked inputs stay readable. */
-.warehouse-board-app {
-  --bottom-row-height: clamp(5.7rem, 10.2vh, 7.1rem) !important;
+.tools-dock:hover .tools-bubbles button,
+.tools-dock:focus-within .tools-bubbles button {
+  opacity: 1 !important;
+  pointer-events: auto !important;
 }
 
-@media (max-width: 1180px) {
-  .warehouse-ramp-card.compact .warehouse-ramp-input {
-    width: min(100%, 7rem) !important;
+.tools-dock:hover .tools-bubbles button:nth-child(1),
+.tools-dock:focus-within .tools-bubbles button:nth-child(1) {
+  transform: translate(-4.8rem, -3.55rem) scale(1) !important;
+}
+
+.tools-dock:hover .tools-bubbles button:nth-child(2),
+.tools-dock:focus-within .tools-bubbles button:nth-child(2) {
+  transform: translate(-0.85rem, -5.75rem) scale(1) !important;
+}
+
+.tools-dock:hover .tools-bubbles button:nth-child(3),
+.tools-dock:focus-within .tools-bubbles button:nth-child(3) {
+  transform: translate(-5.55rem, 0.25rem) scale(1) !important;
+}
+
+.tools-dock:hover .tools-bubbles button:nth-child(4),
+.tools-dock:focus-within .tools-bubbles button:nth-child(4) {
+  transform: translate(-1rem, 3.95rem) scale(1) !important;
+}
+
+.tools-bubbles button:hover {
+  box-shadow: 0 18px 34px rgba(15, 23, 42, 0.28), inset 0 0 0 1px rgba(255,255,255,0.18) !important;
+  filter: brightness(1.05);
+}
+
+.tools-bubbles button:nth-child(1) {
+  background: radial-gradient(circle at 35% 25%, #93c5fd, #2563eb 60%, #1e40af) !important;
+}
+
+.tools-bubbles button:nth-child(2) {
+  background: radial-gradient(circle at 35% 25%, #5eead4, #0f766e 60%, #115e59) !important;
+}
+
+.tools-bubbles button:nth-child(3) {
+  background: radial-gradient(circle at 35% 25%, #fde68a, #f59e0b 58%, #b45309) !important;
+  color: #172033 !important;
+}
+
+.tools-bubbles button:nth-child(4) {
+  background: radial-gradient(circle at 35% 25%, #fca5a5, #dc2626 60%, #991b1b) !important;
+}
+
+.change-trailer-panel {
+  width: min(34rem, 94vw) !important;
+}
+
+.change-trailer-form {
+  display: grid;
+  gap: 0.85rem;
+  padding: 1rem;
+}
+
+.change-trailer-form label {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.change-trailer-form label span {
+  color: #475569;
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.change-trailer-form input {
+  height: 2.75rem;
+  border: 1px solid var(--line-strong);
+  border-radius: 0.75rem;
+  background: var(--surface-soft);
+  color: var(--text);
+  padding: 0 0.8rem;
+  font-size: 16px;
+  font-weight: 850;
+  text-transform: uppercase;
+  outline: none;
+}
+
+.change-trailer-form input:focus {
+  border-color: var(--selected);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.change-trailer-form button[type="submit"] {
+  height: 2.8rem;
+  border: 0;
+  border-radius: 0.85rem;
+  background: linear-gradient(135deg, #2563eb, #1e40af);
+  color: white;
+  font-weight: 950;
+}
+
+.change-trailer-form button[type="submit"]:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.change-trailer-result {
+  margin: 0;
+  border: 1px solid rgba(37, 99, 235, 0.18);
+  border-radius: 0.75rem;
+  background: rgba(37, 99, 235, 0.08);
+  color: #1e3a8a;
+  padding: 0.7rem;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+@media (max-width: 640px) {
+  .tools-dock:hover .tools-bubbles button:nth-child(1),
+  .tools-dock:focus-within .tools-bubbles button:nth-child(1) {
+    transform: translate(-4.15rem, -3.1rem) scale(0.94) !important;
   }
-}
 
+  .tools-dock:hover .tools-bubbles button:nth-child(2),
+  .tools-dock:focus-within .tools-bubbles button:nth-child(2) {
+    transform: translate(-0.8rem, -5rem) scale(0.94) !important;
+  }
 
-/* Ramp card action buttons removed: boxes are now cleaner and less crowded. */
-.warehouse-ramp-actions {
-  display: none !important;
+  .tools-dock:hover .tools-bubbles button:nth-child(3),
+  .tools-dock:focus-within .tools-bubbles button:nth-child(3) {
+    transform: translate(-4.85rem, 0.2rem) scale(0.94) !important;
+  }
+
+  .tools-dock:hover .tools-bubbles button:nth-child(4),
+  .tools-dock:focus-within .tools-bubbles button:nth-child(4) {
+    transform: translate(-0.9rem, 3.35rem) scale(0.94) !important;
+  }
 }

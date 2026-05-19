@@ -1,10 +1,12 @@
 "use client"
 
+import type React from "react"
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import WarehouseLayout from "./warehouse-layout"
 import Legend from "./legend"
 import HtmlUploader from "./html-uploader"
 import { useSupabaseSync } from "@/contexts/supabase-sync-context"
+import { useLookup } from "@/contexts/lookup-context"
 
 export interface RampStatus {
   active: boolean
@@ -24,6 +26,8 @@ const RAMP_NUMBERS = Array.from({ length: 41 }, (_, index) => index + 20)
 const LEFT_RAMPS = Array.from({ length: 17 }, (_, index) => 60 - index)
 const RIGHT_RAMPS = Array.from({ length: 16 }, (_, index) => 20 + index)
 const BOTTOM_RAMPS = Array.from({ length: 8 }, (_, index) => 43 - index)
+
+const normalizeValue = (value: string) => value.trim().toUpperCase()
 
 const createDefaultStatus = (): RampStatus => ({
   active: false,
@@ -63,12 +67,18 @@ function WarehouseVisualizationContent() {
   const initialLoadDone = useRef(false)
 
   const { syncRampStatus, isSupabaseAvailable, connectionStatus } = useSupabaseSync()
+  const { lookupData, lookupTrailerByTruck, lookupTruckByTrailer, addTruckTrailerPair, forceRefresh, dataCount } = useLookup()
 
   const [rampStatus, setRampStatus] = useState<Record<number, RampStatus>>(initializeRampStatus())
   const [selectedRamp, setSelectedRamp] = useState<number | null>(null)
   const [rampSearch, setRampSearch] = useState("")
   const [filter, setFilter] = useState<RampFilter>("all")
   const [showUploader, setShowUploader] = useState(false)
+  const [showChangeTrailer, setShowChangeTrailer] = useState(false)
+  const [changeTruck, setChangeTruck] = useState("")
+  const [changeTrailer, setChangeTrailer] = useState("")
+  const [changeResult, setChangeResult] = useState<string | null>(null)
+  const [isChangingTrailer, setIsChangingTrailer] = useState(false)
   const [lastLocalSave, setLastLocalSave] = useState<Date | null>(null)
 
   const saveRampStatus = useCallback(
@@ -85,6 +95,50 @@ function WarehouseVisualizationContent() {
       }
     },
     [syncRampStatus],
+  )
+
+  const findTrailerForTruck = useCallback(
+    (truck: string) => {
+      const cleanTruck = truck.trim()
+      const normalizedTruck = normalizeValue(cleanTruck)
+      if (!normalizedTruck) return null
+
+      const directMatch = lookupData.find((item) => normalizeValue(item.truck || "") === normalizedTruck)
+      if (directMatch?.trailer) return directMatch.trailer
+
+      return (
+        lookupTrailerByTruck(cleanTruck) ||
+        lookupTrailerByTruck(cleanTruck.toUpperCase()) ||
+        lookupTrailerByTruck(cleanTruck.toLowerCase())
+      )
+    },
+    [lookupData, lookupTrailerByTruck],
+  )
+
+  const findTruckForTrailer = useCallback(
+    (trailer: string) => {
+      const cleanTrailer = trailer.trim()
+      const normalizedTrailer = normalizeValue(cleanTrailer)
+      const withoutPrefix = normalizedTrailer.startsWith("O-") ? normalizedTrailer.slice(2) : normalizedTrailer
+      if (!normalizedTrailer) return null
+
+      const directMatch = lookupData.find((item) => {
+        const itemTrailer = normalizeValue(item.trailer || "")
+        const itemTrailerWithoutPrefix = itemTrailer.startsWith("O-") ? itemTrailer.slice(2) : itemTrailer
+        return itemTrailer === normalizedTrailer || itemTrailerWithoutPrefix === withoutPrefix
+      })
+
+      if (directMatch?.truck) return directMatch.truck
+
+      return (
+        lookupTruckByTrailer(cleanTrailer) ||
+        lookupTruckByTrailer(cleanTrailer.toUpperCase()) ||
+        lookupTruckByTrailer(cleanTrailer.toLowerCase()) ||
+        lookupTruckByTrailer(withoutPrefix) ||
+        lookupTruckByTrailer(`O-${withoutPrefix}`)
+      )
+    },
+    [lookupData, lookupTruckByTrailer],
   )
 
   useEffect(() => {
@@ -217,6 +271,7 @@ function WarehouseVisualizationContent() {
     (rampNumber: number, value: string, inputType: "truck" | "trailer") => {
       if (!isMounted.current) return
 
+      const cleanValue = value.trim()
       setSelectedRamp(rampNumber)
 
       setRampStatus((previous) => {
@@ -224,6 +279,20 @@ function WarehouseVisualizationContent() {
         const updatedStatus = {
           ...currentStatus,
           [inputType === "truck" ? "truckValue" : "trailerValue"]: value,
+        }
+
+        if (inputType === "truck" && cleanValue && cleanValue.toLowerCase() !== "defect") {
+          const matchingTrailer = findTrailerForTruck(cleanValue)
+          if (matchingTrailer) {
+            updatedStatus.trailerValue = matchingTrailer
+          }
+        }
+
+        if (inputType === "trailer" && cleanValue && cleanValue.toLowerCase() !== "defect") {
+          const matchingTruck = findTruckForTrailer(cleanValue)
+          if (matchingTruck) {
+            updatedStatus.truckValue = matchingTruck
+          }
         }
 
         updatedStatus.inputValue = `${updatedStatus.truckValue || ""} ${updatedStatus.trailerValue || ""}`.trim()
@@ -262,7 +331,68 @@ function WarehouseVisualizationContent() {
         return nextStatus
       })
     },
-    [saveRampStatus],
+    [findTrailerForTruck, findTruckForTrailer, saveRampStatus],
+  )
+
+  const handleChangeTrailerSubmit = useCallback(
+    async (event: React.FormEvent<HTMLFormElement>) => {
+      event.preventDefault()
+
+      const cleanTruck = normalizeValue(changeTruck)
+      const cleanTrailer = normalizeValue(changeTrailer)
+
+      if (!cleanTruck || !cleanTrailer) {
+        setChangeResult("Truck and trailer are required.")
+        return
+      }
+
+      setIsChangingTrailer(true)
+      setChangeResult(null)
+
+      try {
+        const lookupMessage = await addTruckTrailerPair(cleanTruck, cleanTrailer)
+
+        let updatedRampCount = 0
+        const nextStatus: Record<number, RampStatus> = {}
+
+        RAMP_NUMBERS.forEach((rampNumber) => {
+          const current = rampStatus[rampNumber] || createDefaultStatus()
+          if (normalizeValue(current.truckValue || "") === cleanTruck) {
+            updatedRampCount += 1
+            const updated = {
+              ...current,
+              trailerValue: cleanTrailer,
+              inputValue: `${current.truckValue || cleanTruck} ${cleanTrailer}`.trim(),
+              active: true,
+              red: true,
+              yellow: false,
+              hasTruck: true,
+              isExiting: false,
+            }
+            nextStatus[rampNumber] = updated
+          } else {
+            nextStatus[rampNumber] = current
+          }
+        })
+
+        if (updatedRampCount > 0) {
+          setRampStatus(nextStatus)
+          saveRampStatus(nextStatus)
+        }
+
+        setChangeResult(`${lookupMessage}. Updated ${updatedRampCount} ramp${updatedRampCount === 1 ? "" : "s"}.`)
+        setChangeTruck(cleanTruck)
+        setChangeTrailer(cleanTrailer)
+        forceRefresh().catch(() => {
+          // Local update already succeeded. Force refresh is best-effort.
+        })
+      } catch (error: any) {
+        setChangeResult(error?.message || "Trailer change failed.")
+      } finally {
+        setIsChangingTrailer(false)
+      }
+    },
+    [addTruckTrailerPair, changeTrailer, changeTruck, forceRefresh, rampStatus, saveRampStatus],
   )
 
   const handleClearAll = useCallback(() => {
@@ -311,7 +441,7 @@ function WarehouseVisualizationContent() {
           <div className="warehouse-board-logo">WR</div>
           <div>
             <h1>Warehouse Ramp Status</h1>
-            <p>{visibleFocusCount} focused ramps {lastLocalSave ? `• saved at ${lastLocalSave.toLocaleTimeString()}` : ""}</p>
+            <p>{visibleFocusCount} focused ramps • {dataCount} lookup pairs {lastLocalSave ? `• saved at ${lastLocalSave.toLocaleTimeString()}` : ""}</p>
           </div>
         </div>
 
@@ -365,6 +495,12 @@ function WarehouseVisualizationContent() {
           <button type="button" onClick={handleExportCsv}>
             CSV
           </button>
+          <button type="button" onClick={() => {
+            setChangeResult(null)
+            setShowChangeTrailer(true)
+          }}>
+            TRL
+          </button>
           <button type="button" className="danger" onClick={handleClearAll}>
             Clear
           </button>
@@ -387,6 +523,55 @@ function WarehouseVisualizationContent() {
             <div className="database-popout-content">
               <HtmlUploader />
             </div>
+          </div>
+        </div>
+      ) : null}
+
+      {showChangeTrailer ? (
+        <div className="database-popout" role="dialog" aria-modal="true" aria-label="Change trailer">
+          <div className="database-popout-backdrop" onClick={() => setShowChangeTrailer(false)} />
+          <div className="database-popout-panel change-trailer-panel">
+            <div className="database-popout-header">
+              <div>
+                <h2>Change trailer</h2>
+                <p>Update the truck-trailer pair and the active ramp if that truck is currently used.</p>
+              </div>
+              <button type="button" onClick={() => setShowChangeTrailer(false)} aria-label="Close change trailer">
+                ×
+              </button>
+            </div>
+
+            <form className="change-trailer-form" onSubmit={handleChangeTrailerSubmit}>
+              <label>
+                <span>Truck number</span>
+                <input
+                  value={changeTruck}
+                  onChange={(event) => setChangeTruck(event.target.value.toUpperCase())}
+                  placeholder="Truck"
+                  autoComplete="off"
+                  autoCorrect="off"
+                  spellCheck={false}
+                />
+              </label>
+
+              <label>
+                <span>Trailer now</span>
+                <input
+                  value={changeTrailer}
+                  onChange={(event) => setChangeTrailer(event.target.value.toUpperCase())}
+                  placeholder="Trailer"
+                  autoComplete="off"
+                  autoCorrect="off"
+                  spellCheck={false}
+                />
+              </label>
+
+              <button type="submit" disabled={isChangingTrailer}>
+                {isChangingTrailer ? "Changing..." : "Change trailer"}
+              </button>
+
+              {changeResult ? <p className="change-trailer-result">{changeResult}</p> : null}
+            </form>
           </div>
         </div>
       ) : null}
