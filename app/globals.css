@@ -1731,3 +1731,435 @@ body {
 
 /* Keep SVG wheel positions stable. */
 .truck-wheel { animation: none !important; }
+
+/* -------------------------------------------------------------------------- */
+/* Warehouse-shaped ramp board, no truck animation                             */
+/* -------------------------------------------------------------------------- */
+
+.warehouse-workspace.board-only {
+  grid-template-columns: minmax(0, 1fr) !important;
+  min-height: auto !important;
+}
+
+.board-toolbar {
+  align-items: center !important;
+}
+
+.selected-inline-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+  padding: 0.7rem 0.9rem;
+}
+
+.selected-inline-panel span {
+  display: block;
+  color: #64748b;
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.selected-inline-panel strong {
+  display: block;
+  color: #0f172a;
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.selected-inline-actions {
+  display: flex;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.selected-inline-actions button {
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #0f172a;
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 900;
+  padding: 0.5rem 0.75rem;
+}
+
+.selected-inline-actions button:hover {
+  border-color: #2563eb;
+  color: #1d4ed8;
+}
+
+.board-container {
+  min-height: min(72dvh, 52rem) !important;
+  overflow: auto !important;
+  display: block !important;
+  padding: 0.85rem;
+  background:
+    linear-gradient(90deg, rgba(148, 163, 184, 0.12) 1px, transparent 1px),
+    linear-gradient(rgba(148, 163, 184, 0.12) 1px, transparent 1px),
+    #eef3f8 !important;
+  background-size: 34px 34px !important;
+}
+
+.warehouse-board-map {
+  display: grid;
+  grid-template-columns: minmax(14rem, 18rem) minmax(18rem, 1fr) minmax(14rem, 18rem);
+  grid-template-areas:
+    "left core right"
+    "bottom bottom bottom";
+  gap: 0.7rem;
+  min-width: 62rem;
+  align-items: stretch;
+}
+
+.warehouse-side-ramps,
+.warehouse-bottom-ramps,
+.warehouse-board-core {
+  border: 1px solid #d7e0ec;
+  background: rgba(255, 255, 255, 0.84);
+  border-radius: 1.15rem;
+  box-shadow: 0 14px 35px rgba(15, 23, 42, 0.08);
+}
+
+.warehouse-side-ramps {
+  display: grid;
+  align-content: start;
+  gap: 0.38rem;
+  padding: 0.6rem;
+}
+
+.warehouse-side-ramps.left {
+  grid-area: left;
+}
+
+.warehouse-side-ramps.right {
+  grid-area: right;
+}
+
+.warehouse-bottom-ramps {
+  grid-area: bottom;
+  padding: 0.6rem;
+}
+
+.warehouse-board-core {
+  grid-area: core;
+  min-height: 38rem;
+  display: grid;
+  place-items: center;
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at center, rgba(37, 99, 235, 0.16), transparent 22rem),
+    linear-gradient(145deg, #1e293b, #334155) !important;
+}
+
+.warehouse-board-core::before {
+  content: "";
+  position: absolute;
+  inset: 1rem;
+  border: 1px dashed rgba(226, 232, 240, 0.24);
+  border-radius: 1rem;
+}
+
+.warehouse-core-panel {
+  width: min(25rem, 86%);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 1.25rem;
+  background: rgba(15, 23, 42, 0.72);
+  color: #ffffff;
+  padding: 1.25rem;
+  text-align: center;
+  position: relative;
+  z-index: 1;
+}
+
+.core-title-block span {
+  display: block;
+  color: #93c5fd;
+  font-size: 0.75rem;
+  font-weight: 950;
+  letter-spacing: 0.16em;
+}
+
+.core-title-block strong {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: clamp(1.8rem, 3vw, 3rem);
+  line-height: 1;
+  letter-spacing: -0.05em;
+}
+
+.core-title-block small {
+  display: block;
+  margin-top: 0.5rem;
+  color: #cbd5e1;
+  font-size: 0.82rem;
+}
+
+.core-mini-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.45rem;
+  margin-top: 1rem;
+}
+
+.core-mini-stats div {
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 0.9rem;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 0.65rem 0.4rem;
+}
+
+.core-mini-stats span {
+  display: block;
+  color: #cbd5e1;
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.core-mini-stats strong {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.core-hint {
+  margin-top: 1rem;
+  color: #cbd5e1;
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.zone-title {
+  color: #475569;
+  font-size: 0.72rem;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  padding: 0.1rem 0.15rem 0.25rem;
+  text-transform: uppercase;
+}
+
+.bottom-ramp-grid {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(7.2rem, 1fr));
+  gap: 0.45rem;
+}
+
+.warehouse-ramp-card {
+  display: grid;
+  grid-template-columns: 4.7rem minmax(0, 1fr);
+  gap: 0.42rem;
+  align-items: stretch;
+  border: 1px solid #e2e8f0;
+  border-left: 5px solid #16a34a;
+  border-radius: 0.9rem;
+  background: #ffffff;
+  padding: 0.38rem;
+  transition: opacity 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.warehouse-ramp-card.occupied {
+  border-left-color: #dc2626;
+}
+
+.warehouse-ramp-card.defect {
+  border-left-color: #eab308;
+}
+
+.warehouse-ramp-card.selected {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.14);
+}
+
+.warehouse-ramp-card.dimmed {
+  opacity: 0.28;
+}
+
+.warehouse-ramp-card.dimmed:hover {
+  opacity: 0.72;
+}
+
+.warehouse-ramp-id {
+  border: 0;
+  border-radius: 0.7rem;
+  color: #ffffff;
+  cursor: pointer;
+  display: grid;
+  gap: 0.02rem;
+  place-items: center;
+  padding: 0.32rem;
+  background: #16a34a;
+  min-height: 4.15rem;
+}
+
+.warehouse-ramp-card.occupied .warehouse-ramp-id {
+  background: #dc2626;
+}
+
+.warehouse-ramp-card.defect .warehouse-ramp-id {
+  background: #eab308;
+  color: #111827;
+}
+
+.warehouse-ramp-id span {
+  font-size: 0.58rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  opacity: 0.88;
+  text-transform: uppercase;
+}
+
+.warehouse-ramp-id strong {
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.warehouse-ramp-id em {
+  font-size: 0.58rem;
+  font-style: normal;
+  font-weight: 850;
+  opacity: 0.9;
+}
+
+.warehouse-ramp-inputs {
+  display: grid;
+  grid-template-rows: 1fr 1fr;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.warehouse-ramp-card.side-bottom {
+  grid-template-columns: 1fr;
+  grid-template-rows: auto auto;
+}
+
+.warehouse-ramp-card.side-bottom .warehouse-ramp-id {
+  min-height: 3.4rem;
+}
+
+.input-field-shell {
+  min-height: 1.85rem;
+  border-radius: 0.6rem !important;
+  box-shadow: none !important;
+}
+
+.input-field-label {
+  min-width: 1.3rem;
+  padding: 0 0.25rem !important;
+  font-size: 0.55rem !important;
+}
+
+.input-field {
+  font-size: 16px !important;
+  font-weight: 850 !important;
+  padding: 0 0.28rem !important;
+}
+
+.input-clear-button {
+  width: 1.35rem !important;
+}
+
+/* Truck SVG is intentionally disabled for the simplified warehouse board. */
+.realistic-truck,
+.truck-motion,
+.truck {
+  display: none !important;
+}
+
+@media (max-width: 1180px) {
+  .warehouse-board-map {
+    min-width: 56rem;
+    grid-template-columns: minmax(13rem, 16rem) minmax(16rem, 1fr) minmax(13rem, 16rem);
+  }
+
+  .warehouse-board-core {
+    min-height: 34rem;
+  }
+
+  .bottom-ramp-grid {
+    grid-template-columns: repeat(4, minmax(8rem, 1fr));
+  }
+}
+
+@media (max-width: 780px) {
+  .selected-inline-panel {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .selected-inline-actions {
+    justify-content: stretch;
+  }
+
+  .selected-inline-actions button {
+    flex: 1;
+  }
+
+  .board-container {
+    min-height: 65dvh !important;
+    padding: 0.6rem;
+  }
+
+  .warehouse-board-map {
+    min-width: 0;
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "core"
+      "left"
+      "right"
+      "bottom";
+  }
+
+  .warehouse-board-core {
+    min-height: 13rem;
+  }
+
+  .warehouse-side-ramps {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .zone-title {
+    grid-column: 1 / -1;
+  }
+
+  .bottom-ramp-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .warehouse-ramp-card,
+  .warehouse-ramp-card.side-bottom {
+    grid-template-columns: 4.6rem minmax(0, 1fr);
+    grid-template-rows: auto;
+  }
+
+  .warehouse-ramp-id,
+  .warehouse-ramp-card.side-bottom .warehouse-ramp-id {
+    min-height: 4rem;
+  }
+}
+
+@media (max-width: 520px) {
+  .hall-toolbar.board-toolbar {
+    gap: 0.65rem !important;
+  }
+
+  .warehouse-side-ramps,
+  .bottom-ramp-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .warehouse-ramp-card,
+  .warehouse-ramp-card.side-bottom {
+    grid-template-columns: 4.4rem minmax(0, 1fr);
+  }
+
+  .core-title-block strong {
+    font-size: 1.7rem;
+  }
+}
