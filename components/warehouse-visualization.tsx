@@ -84,6 +84,7 @@ const getRampStateLabel = (status?: RampStatus) => {
 function WarehouseVisualizationContent() {
   const isMounted = useRef(false)
   const initialLoadDone = useRef(false)
+  const toolsRef = useRef<HTMLDivElement | null>(null)
 
   const { syncRampStatus, isSupabaseAvailable, connectionStatus } = useSupabaseSync()
   const { lookupData, lookupTrailerByTruck, lookupTruckByTrailer, addTruckTrailerPair, forceRefresh, dataCount } = useLookup()
@@ -215,6 +216,23 @@ function WarehouseVisualizationContent() {
       isMounted.current = false
     }
   }, [])
+
+
+  useEffect(() => {
+    if (!isToolsPinned) return
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as Node | null
+      if (!target || !toolsRef.current) return
+
+      if (!toolsRef.current.contains(target)) {
+        setIsToolsPinned(false)
+      }
+    }
+
+    document.addEventListener("pointerdown", handlePointerDown)
+    return () => document.removeEventListener("pointerdown", handlePointerDown)
+  }, [isToolsPinned])
 
   const dashboardStats = useMemo(() => {
     const total = RAMP_NUMBERS.length
@@ -703,7 +721,7 @@ function WarehouseVisualizationContent() {
 
       <Legend />
 
-      <div className={`tools-dock ${isToolsPinned ? "pinned" : ""}`}>
+      <div ref={toolsRef} className={`tools-dock ${isToolsPinned ? "pinned" : ""}`}>
         <button
           type="button"
           className="tools-main"
@@ -715,22 +733,30 @@ function WarehouseVisualizationContent() {
         </button>
 
         <div className="tools-bubbles">
-          <button type="button" onClick={() => setShowUploader(true)}>
+          <button type="button" onClick={() => {
+            setShowUploader(true)
+            setIsToolsPinned(false)
+          }}>
             DB
           </button>
           <button type="button" onClick={() => {
             setMovementExportResult(null)
             setShowMovementsExport(true)
+            setIsToolsPinned(false)
           }}>
             CSV
           </button>
           <button type="button" onClick={() => {
             setChangeResult(null)
             setShowChangeTrailer(true)
+            setIsToolsPinned(false)
           }}>
             TRL
           </button>
-          <button type="button" className="danger" onClick={handleClearAll}>
+          <button type="button" className="danger" onClick={() => {
+            handleClearAll()
+            setIsToolsPinned(false)
+          }}>
             Clear
           </button>
         </div>

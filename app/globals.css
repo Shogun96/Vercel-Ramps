@@ -1498,3 +1498,78 @@ button {
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+
+/* -------------------------------------------------------------------------- */
+/* FINAL Tools mobile/tablet tap behavior                                     */
+/* -------------------------------------------------------------------------- */
+/* Desktop keeps hover + click pinned. Touch devices use tap only:
+   - tap Tools opens/closes
+   - tap outside closes via JS
+   - accidental finger hover does not open the orbit */
+@media (hover: none), (pointer: coarse), (max-width: 1024px) {
+  .tools-dock:hover .tools-main {
+    transform: none !important;
+    filter: none !important;
+  }
+
+  .tools-dock:hover .tools-bubbles button {
+    opacity: 0 !important;
+    pointer-events: none !important;
+    transform: translate(0, 0) scale(0.64) !important;
+  }
+
+  .tools-dock.pinned .tools-main,
+  .tools-dock:focus-within .tools-main {
+    transform: scale(1.05) rotate(-5deg) !important;
+    filter: brightness(1.05) !important;
+  }
+
+  .tools-dock.pinned .tools-bubbles button,
+  .tools-dock:focus-within .tools-bubbles button {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+  }
+
+  .tools-dock.pinned .tools-bubbles button:nth-child(1),
+  .tools-dock:focus-within .tools-bubbles button:nth-child(1) {
+    transform: translate(-4.65rem, -0.55rem) scale(1) !important;
+  }
+
+  .tools-dock.pinned .tools-bubbles button:nth-child(2),
+  .tools-dock:focus-within .tools-bubbles button:nth-child(2) {
+    transform: translate(-4.25rem, -4.15rem) scale(1) !important;
+  }
+
+  .tools-dock.pinned .tools-bubbles button:nth-child(3),
+  .tools-dock:focus-within .tools-bubbles button:nth-child(3) {
+    transform: translate(-0.65rem, -4.65rem) scale(1) !important;
+  }
+
+  .tools-dock.pinned .tools-bubbles button:nth-child(4),
+  .tools-dock:focus-within .tools-bubbles button:nth-child(4) {
+    transform: translate(-6.65rem, -6.65rem) scale(1) !important;
+  }
+}
+
+@media (hover: none) and (max-width: 640px), (pointer: coarse) and (max-width: 640px) {
+  .tools-dock.pinned .tools-bubbles button:nth-child(1),
+  .tools-dock:focus-within .tools-bubbles button:nth-child(1) {
+    transform: translate(-4.05rem, -0.45rem) scale(1) !important;
+  }
+
+  .tools-dock.pinned .tools-bubbles button:nth-child(2),
+  .tools-dock:focus-within .tools-bubbles button:nth-child(2) {
+    transform: translate(-3.75rem, -3.65rem) scale(1) !important;
+  }
+
+  .tools-dock.pinned .tools-bubbles button:nth-child(3),
+  .tools-dock:focus-within .tools-bubbles button:nth-child(3) {
+    transform: translate(-0.55rem, -4.05rem) scale(1) !important;
+  }
+
+  .tools-dock.pinned .tools-bubbles button:nth-child(4),
+  .tools-dock:focus-within .tools-bubbles button:nth-child(4) {
+    transform: translate(-5.75rem, -5.75rem) scale(1) !important;
+  }
+}
